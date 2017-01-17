@@ -11,19 +11,9 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
 ### Installation from maven
 ```xml
     <dependency>
-        <groupId>io.logz.sender</groupId>
-        <artifactId>logzio-sender</artifactId>
-        <version>1.0.1</version>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-api</artifactId>
-        <version>2.7</version>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-core</artifactId>
-        <version>2.7</version>
+        <groupId>io.logz.log4j2</groupId>
+        <artifactId>logzio-log4j2-appender</artifactId>
+        <version>1.0.0</version>
     </dependency>
 ```
 
@@ -87,7 +77,6 @@ public class LogzioLog4j2Example {
         Logger logger = LogManager.getLogger(LogzioLog4j2Example.class);
 
         ThreadContext.put("Key", "Value");
-        MDC.put("Key", "Value");
         logger.info("This log will hold the MDC data as well");
     }
 }

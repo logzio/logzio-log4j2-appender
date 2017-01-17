@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static io.logz.test.MockLogzioBulkListener.LogRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -40,17 +41,14 @@ public class Log4j2AppenderTest {
 
         @Test
         public void simpleAppending() throws Exception {
-
             String token = "aBcDeFgHiJkLmNoPqRsT";
             String type = "awesomeType";
             String loggerName = "simpleAppending";
             int drainTimeout = 1;
-
             String message1 = "Testing.." + random(5);
             String message2 = "Warning test.." + random(5);
 
             Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, null);
-
             testLogger.info(message1);
             testLogger.warn(message2);
 
@@ -67,22 +65,19 @@ public class Log4j2AppenderTest {
             String type = "willTryWithOrWithoutEnvironmentVariables";
             String loggerName = "additionalLogger";
             int drainTimeout = 1;
-
             String message1 = "Just a log - " + random(5);
             Map<String,String > additionalFields = new HashMap<>();
-
             String additionalFieldsString = "java_home=$JAVA_HOME;testing=yes;message=override";
             additionalFields.put("java_home", System.getenv("JAVA_HOME"));
             additionalFields.put("testing", "yes");
 
             Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, additionalFieldsString);
-
             testLogger.info(message1);
 
             sleepSeconds(2 * drainTimeout);
 
             mockListener.assertNumberOfReceivedMsgs(1);
-            MockLogzioBulkListener.LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
             mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
             assertAdditionalFields(logRequest, additionalFields);
         }
@@ -93,18 +88,16 @@ public class Log4j2AppenderTest {
             String type = "withOrWithoutHostnamr";
             String loggerName = "runningOutOfIdeasHere";
             int drainTimeout = 1;
-
             String message1 = "Hostname log - " +  random(5);
 
             Logger testLogger = createLogger(token, type, loggerName, drainTimeout, true, null);
-
             testLogger.info(message1);
 
             // Sleep double time the drain timeout
             sleepSeconds(2 * drainTimeout);
 
             mockListener.assertNumberOfReceivedMsgs(1);
-            MockLogzioBulkListener.LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
             mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
 
             String hostname = InetAddress.getLocalHost().getHostName();
@@ -119,11 +112,9 @@ public class Log4j2AppenderTest {
             String loggerName = "exceptionProducer";
             int drainTimeout = 1;
             Throwable exception = null;
-
             String message1 = "This is not an int..";
 
             Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, null);
-
             try {
                 Integer.parseInt(message1);
             } catch (Exception e) {
@@ -135,12 +126,11 @@ public class Log4j2AppenderTest {
             sleepSeconds(2 * drainTimeout);
 
             mockListener.assertNumberOfReceivedMsgs(1);
-            MockLogzioBulkListener.LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
             mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
 
             String exceptionField = logRequest.getStringFieldOrNull("exception");
             if (exceptionField == null) fail("Exception field does not exists");
-
             assertThat(exceptionField.replace("\\", "")).contains(exception.getMessage());
         }
 
@@ -150,28 +140,19 @@ public class Log4j2AppenderTest {
             String type = "mdcType";
             String loggerName = "mdcTesting";
             int drainTimeout = 1;
-
             String message1 = "Simple log line - "+random(5);
-
             String mdcKey = "mdc-key";
             String mdcValue = "mdc-value";
 
-            Map<String, String> mdcKv = new HashMap<>();
-            mdcKv.put(mdcKey, mdcValue);
-            mdcKv.put("logger", "Doesn't matter");
-
             ThreadContext.put(mdcKey,mdcValue);
-
             Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, null);
-
             testLogger.info(message1);
 
             sleepSeconds(2 * drainTimeout);
 
             mockListener.assertNumberOfReceivedMsgs(1);
-            MockLogzioBulkListener.LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
             mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
-
             assertThat(logRequest.getStringFieldOrNull(mdcKey)).isEqualTo(mdcValue);
         }
 
@@ -180,27 +161,20 @@ public class Log4j2AppenderTest {
             String token = "markerToken";
             String type = "markerType";
             String loggerName = "markerTesting";
-
             String markerKey = "marker";
             String markerTestValue = "MyMarker";
-
-
             int drainTimeout = 1;
-
             String message1 = "Simple log line - "+random(5);
-
             Marker marker = MarkerManager.getMarker(markerTestValue);
 
             Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, null);
-
             testLogger.info(marker, message1);
 
             sleepSeconds(2 * drainTimeout);
 
             mockListener.assertNumberOfReceivedMsgs(1);
-            MockLogzioBulkListener.LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
             mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
-
             assertThat(logRequest.getStringFieldOrNull(markerKey)).isEqualTo(markerTestValue);
         }
 
@@ -210,33 +184,28 @@ public class Log4j2AppenderTest {
             String type = "testType";
             String loggerName = "testLogger";
             int drainTimeout = 1;
-
             String message1 = "Just a log - " + random(5);
-            Logger testLogger = createLogger("$JAVA_HOME", type, loggerName, drainTimeout, false, null);
 
+            Logger testLogger = createLogger("$JAVA_HOME", type, loggerName, drainTimeout, false, null);
             testLogger.info(message1);
 
             sleepSeconds(2 * drainTimeout);
 
             mockListener.assertNumberOfReceivedMsgs(1);
-            MockLogzioBulkListener.LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
             mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
         }
 
-        protected Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
+        private Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
                                       boolean addHostname, String additionalFields) {
-
             logger.info("Creating logger {}. token={}, type={}, drainTimeout={}, addHostname={}, additionalFields={}",
                     loggerName, token, type, drainTimeout, addHostname, additionalFields);
-
-           Logger log4j2Logger =  LogManager.getLogger(loggerName);
-
+            Logger log4j2Logger =  LogManager.getLogger(loggerName);
             LogzioLog4j2Appender.Builder logzioLog4j2AppenderBuilder = LogzioLog4j2Appender.newBuilder();
-
             logzioLog4j2AppenderBuilder.setLogzioToken(token);
             logzioLog4j2AppenderBuilder.setLogzioType(type);
             logzioLog4j2AppenderBuilder.setDebug(true);
-            logzioLog4j2AppenderBuilder.setLogzioURL("http://" + mockListener.getHost() + ":" + mockListener.getPort());
+            logzioLog4j2AppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
             logzioLog4j2AppenderBuilder.setAddHostname(addHostname);
 
             if (drainTimeout != null) {
@@ -248,7 +217,6 @@ public class Log4j2AppenderTest {
             }
 
             LogzioLog4j2Appender appender = logzioLog4j2AppenderBuilder.build();
-
             appender.start();
             assertThat(appender.isStarted()).isTrue();
             ((org.apache.logging.log4j.core.Logger)log4j2Logger).addAppender(appender);
@@ -257,7 +225,7 @@ public class Log4j2AppenderTest {
             return log4j2Logger;
         }
 
-        public void assertAdditionalFields(MockLogzioBulkListener.LogRequest logRequest, Map<String, String> additionalFields) {
+        private void assertAdditionalFields(LogRequest logRequest, Map<String, String> additionalFields) {
             additionalFields.forEach((field, value) -> {
                 String fieldValueInLog = logRequest.getStringFieldOrNull(field);
                 assertThat(fieldValueInLog)

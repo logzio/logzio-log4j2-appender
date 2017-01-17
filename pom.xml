@@ -6,7 +6,7 @@
 
     <groupId>io.logz.log4j2</groupId>
     <artifactId>logzio-log4j2-appender</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <packaging>jar</packaging>
     <name>Logz.io Log4j2 Appender</name>
@@ -34,6 +34,10 @@
         <developerConnection>scm:git:git@github.com:logzio/logzio-log4j2-appender.git</developerConnection>
         <url>https://github.com/logzio/logzio-log4j2-appender</url>
     </scm>
+
+    <properties>
+        <logzio-sender-version>1.0.3</logzio-sender-version>
+    </properties>
 
     <build>
         <plugins>
@@ -123,7 +127,7 @@
                     <relocations>
                         <relocation>
                             <pattern>com.google.common</pattern>
-                            <shadedPattern>io.logz.com.google.common</shadedPattern>
+                            <shadedPattern>io.logz.log4j2.com.google.common</shadedPattern>
                         </relocation>
                     </relocations>
                     <filters>
@@ -143,12 +147,12 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>19.0</version>
+            <version>20.0</version>
         </dependency>
         <dependency>
             <groupId>io.logz.sender</groupId>
             <artifactId>logzio-sender</artifactId>
-            <version>1.0.1</version>
+            <version>${logzio-sender-version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
@@ -169,7 +173,7 @@
         <dependency>
             <groupId>io.logz.sender</groupId>
             <artifactId>logzio-sender-test</artifactId>
-            <version>1.0.1</version>
+            <version>${logzio-sender-version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

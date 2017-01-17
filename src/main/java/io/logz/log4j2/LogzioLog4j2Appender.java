@@ -1,9 +1,9 @@
 package io.logz.log4j2;
 
 import com.google.common.base.Splitter;
-import io.logz.com.google.gson.JsonObject;
 import io.logz.sender.LogzioSender;
-import io.logz.sender.LogzioStatusReporter;
+import io.logz.sender.SenderStatusReporter;
+import io.logz.sender.com.google.gson.JsonObject;
 import io.logz.sender.exceptions.LogzioParameterErrorException;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
@@ -16,7 +16,6 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
-import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
 import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.core.util.Log4jThreadFactory;
@@ -50,6 +49,10 @@ public class LogzioLog4j2Appender extends AbstractAppender {
     private static final String THREAD = "thread";
     private static final String EXCEPTION = "exception";
 
+    private static final Set<String> reservedFields =  new HashSet<>(Arrays.asList(new String[] {TIMESTAMP,LOGLEVEL, MARKER, MESSAGE,LOGGER,THREAD,EXCEPTION}));
+
+    private static Logger statusLogger = StatusLogger.getLogger();
+
     private LogzioSender logzioSender;
 
     private String logzioToken;
@@ -62,20 +65,15 @@ public class LogzioLog4j2Appender extends AbstractAppender {
     private int socketTimeout = 10 * 1000;
     private boolean debug = false;
     private boolean addHostname = false;
-    private String additionalFields;
     private int gcPersistedQueueFilesIntervalSeconds = 30;
 
     private Map<String, String> additionalFieldsMap = new HashMap<>();
 
-    private static final Set<String> reservedFields =  new HashSet<>(Arrays.asList(new String[] {TIMESTAMP,LOGLEVEL, MARKER, MESSAGE,LOGGER,THREAD,EXCEPTION}));
-
-    private static Logger statusLogger = StatusLogger.getLogger();
-
-    protected LogzioLog4j2Appender(String name, Filter filter, Layout<? extends Serializable> layout, String url,
+    protected LogzioLog4j2Appender(String name, Filter filter, Layout<? extends Serializable> layout, final boolean ignoreExceptions, String url,
                                    String token, String type, int drainTimeoutSec,int fileSystemFullPercentThreshold,
                                    String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
                                    String additionalFields, boolean debug,int gcPersistedQueueFilesIntervalSeconds) {
-        super(name, filter, layout, true);
+        super(name, filter, layout, ignoreExceptions);
         this.logzioToken = token;
         this.logzioUrl = url;
         this.logzioType = type;
@@ -86,8 +84,21 @@ public class LogzioLog4j2Appender extends AbstractAppender {
         this.connectTimeout = connectTimeout;
         this.debug = debug;
         this.addHostname = addHostname;
-        this.additionalFields = additionalFields;
         this.gcPersistedQueueFilesIntervalSeconds = gcPersistedQueueFilesIntervalSeconds;
+        if (additionalFields != null) {
+            Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
+                if (reservedFields.contains(k)) {
+                    statusLogger.warn("The field name '" + k + "' defined in additionalFields configuration can't be used since it's a reserved field name. This field will not be added to the outgoing log messages");
+                }
+                else {
+                    String value = getValueFromSystemEnvironmentIfNeeded(v);
+                    if (value != null) {
+                        additionalFieldsMap.put(k, value);
+                    }
+                }
+            });
+            statusLogger.info("The additional fields that would be added: " + additionalFieldsMap.toString());
+        }
     }
 
     @PluginBuilderFactory
@@ -106,8 +117,8 @@ public class LogzioLog4j2Appender extends AbstractAppender {
         @PluginBuilderAttribute
         String name = "LogzioAppender";
 
-        @PluginBuilderAttribute("logzioURL")
-        String logzioURL="https://listener.logz.io:8071";
+        @PluginBuilderAttribute("logzioUrl")
+        String logzioUrl="https://listener.logz.io:8071";
 
         @PluginBuilderAttribute
         String logzioToken;
@@ -142,10 +153,12 @@ public class LogzioLog4j2Appender extends AbstractAppender {
         @PluginBuilderAttribute
         int gcPersistedQueueFilesIntervalSeconds = 30;
 
+        @PluginBuilderAttribute
+        private boolean ignoreExceptions = true;
 
         @Override
         public LogzioLog4j2Appender build() {
-            return new LogzioLog4j2Appender(name,filter, layout, logzioURL, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
+            return new LogzioLog4j2Appender(name,filter, layout, ignoreExceptions, logzioUrl, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
                     bufferDir,socketTimeout,connectTimeout,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds);
         }
 
@@ -162,6 +175,11 @@ public class LogzioLog4j2Appender extends AbstractAppender {
             return this;
         }
 
+        public Builder setIgnoreExceptions(final boolean ignoreExceptions) {
+            this.ignoreExceptions = ignoreExceptions;
+            return this;
+        }
+
         public Builder setName(String name) {
             if (name == null) {
                 statusLogger.warn("No name provided for LogzioLog4j2Appender");
@@ -171,9 +189,9 @@ public class LogzioLog4j2Appender extends AbstractAppender {
             return this;
         }
 
-        public Builder setLogzioURL(String logzioURL) {
-            if ( logzioURL != null ) {
-                this.logzioURL = getValueFromSystemEnvironmentIfNeeded(logzioURL);
+        public Builder setLogzioUrl(String logzioUrl) {
+            if ( logzioUrl != null ) {
+                this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(logzioUrl);
             }
             return this;
         }
@@ -236,7 +254,6 @@ public class LogzioLog4j2Appender extends AbstractAppender {
 
 
     public void start() {
-
         if (logzioToken == null) {
             statusLogger.error("Logz.io Token is missing! Bailing out..");
             return;
@@ -247,20 +264,6 @@ public class LogzioLog4j2Appender extends AbstractAppender {
                 return;
             }
         }
-        if (additionalFields != null) {
-            Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
-                if (reservedFields.contains(k)) {
-                    statusLogger.warn("The field name '" + k + "' defined in additionalFields configuration can't be used since it's a reserved field name. This field will not be added to the outgoing log messages");
-                }
-                else {
-                    String value = getValueFromSystemEnvironmentIfNeeded(v);
-                    if (value != null) {
-                        additionalFieldsMap.put(k, value);
-                    }
-                }
-            });
-            statusLogger.info("The additional fields that would be added: " + additionalFieldsMap.toString());
-        }
         try {
             if (addHostname) {
                 String hostname = InetAddress.getLocalHost().getHostName();
@@ -270,7 +273,6 @@ public class LogzioLog4j2Appender extends AbstractAppender {
             statusLogger.warn("The configuration addHostName was specified but the host could not be resolved, thus the field 'hostname' will not be added", e);
         }
         if (bufferDir != null) {
-
             bufferDir += File.separator + logzioType;
             File bufferFile = new File(bufferDir);
             if (bufferFile.exists()) {
@@ -288,13 +290,12 @@ public class LogzioLog4j2Appender extends AbstractAppender {
         else {
             bufferDir = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer"+File.separator + logzioType;
         }
-        File bufferDirFile = new File(bufferDir+File.separator+"logzio-log4j2-appender");
+        File bufferDirFile = new File(bufferDir,"logzio-log4j2-appender");
 
         try {
-            LogzioStatusReporter reporter = new StatusReporter();
-            logzioSender = LogzioSender.getOrCreateSenderByType(logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
+           logzioSender = LogzioSender.getOrCreateSenderByType(logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
                     bufferDirFile, logzioUrl, socketTimeout, connectTimeout, debug,
-                    reporter, Executors.newScheduledThreadPool (2,Log4jThreadFactory.createThreadFactory(this.getClass().getSimpleName())), gcPersistedQueueFilesIntervalSeconds);
+                    new StatusReporter(), Executors.newScheduledThreadPool (2,Log4jThreadFactory.createThreadFactory(this.getClass().getSimpleName())), gcPersistedQueueFilesIntervalSeconds);
             logzioSender.start();
         } catch(IOException e) {
             statusLogger.error("Can't start Logzio data sender. Problem to create buffer directory: ",e);
@@ -317,7 +318,7 @@ public class LogzioLog4j2Appender extends AbstractAppender {
 
     @Override
     public void append(LogEvent loggingEvent) {
-        if (!loggingEvent.getLoggerName().contains("io.logz.com.bluejeans.common.bigqueue")) {
+        if (!loggingEvent.getLoggerName().contains("io.logz.sender")) {
             logzioSender.send(formatMessageAsJson(loggingEvent));
         }
     }
@@ -363,7 +364,7 @@ public class LogzioLog4j2Appender extends AbstractAppender {
     }
 
 
-    class StatusReporter implements LogzioStatusReporter {
+    private class StatusReporter implements SenderStatusReporter {
 
         @Override
         public void error(String msg) {
