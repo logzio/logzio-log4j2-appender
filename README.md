@@ -22,7 +22,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <Appenders>
         <LogzioAppender name="Logzio">
             <logzioToken>yourlogziopersonaltokenfromsettings</logzioToken>
-            <logioType>myAwesomeType</logioType>
+            <logzioType>myAwesomeType</logzioType>
         </LogzioAppender>
        
     </Appenders>
