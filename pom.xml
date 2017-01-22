@@ -36,7 +36,7 @@
     </scm>
 
     <properties>
-        <logzio-sender-version>1.0.3</logzio-sender-version>
+        <logzio-sender-version>1.0.4</logzio-sender-version>
         <log4j2-version>2.7</log4j2-version>
     </properties>
 
