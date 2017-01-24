@@ -61,7 +61,7 @@ public class LogzioAppender extends AbstractAppender {
         @PluginElement("Filter")
         private Filter filter;
 
-        @PluginBuilderAttribute()
+        @PluginBuilderAttribute
         String name = "LogzioAppender";
 
         @PluginBuilderAttribute
@@ -106,7 +106,7 @@ public class LogzioAppender extends AbstractAppender {
 
         @Override
         public LogzioAppender build() {
-            return new LogzioAppender(name,filter, ignoreExceptions, logzioUrl, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
+            return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
                     bufferDir, socketTimeoutMs, connectTimeoutMs,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds);
         }
 
@@ -295,7 +295,7 @@ public class LogzioAppender extends AbstractAppender {
     @Override
     public void stop() {
         if (logzioSender != null) logzioSender.stop();
-        if ( tasksExecutor != null ) tasksExecutor.shutdown();
+        if ( tasksExecutor != null ) tasksExecutor.shutdownNow();
         super.stop();
     }
 
