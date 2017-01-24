@@ -1,4 +1,4 @@
-# Logzio Log4j 2 Appender
+# Logzio Log4j 2 Appender 
 Log4j 2 Appender that ships logs using HTTPS bulk
 [![Build Status](https://travis-ci.org/logzio/logzio-log4j2-appender.svg?branch=master)](https://travis-ci.org/logzio/logzio-log4j2-appender)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.logz.log4j2/logzio-log4j2-appender/badge.svg)](http://mvnrepository.com/artifact/io.logz.log4j2/logzio-log4j2-appender)
