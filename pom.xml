@@ -6,7 +6,7 @@
 
     <groupId>io.logz.log4j2</groupId>
     <artifactId>logzio-log4j2-appender</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
 
     <packaging>jar</packaging>
     <name>Logz.io Log4j2 Appender</name>
@@ -36,7 +36,7 @@
     </scm>
 
     <properties>
-        <logzio-sender-version>1.0.4</logzio-sender-version>
+        <logzio-sender-version>1.0.5</logzio-sender-version>
         <log4j2-version>2.7</log4j2-version>
     </properties>
 
@@ -88,9 +88,6 @@
                         <goals>
                             <goal>sign</goal>
                         </goals>
-                        <configuration>
-                            <keyname>roi@logz.io</keyname>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
