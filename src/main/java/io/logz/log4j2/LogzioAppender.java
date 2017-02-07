@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author MarinaRazumovsky
@@ -279,7 +280,7 @@ public class LogzioAppender extends AbstractAppender {
         File bufferDirFile = new File(bufferDirPath,logzioType);
 
         try {
-            tasksExecutor = Executors.newScheduledThreadPool(2, Log4jThreadFactory.createThreadFactory(this.getClass().getSimpleName()));
+            tasksExecutor = Executors.newScheduledThreadPool(2, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSender = LogzioSender.getOrCreateSenderByType(logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
                     bufferDirFile, logzioUrl, socketTimeout, connectTimeout, debug,
                     new StatusReporter(), tasksExecutor, gcPersistedQueueFilesIntervalSeconds);
@@ -291,12 +292,14 @@ public class LogzioAppender extends AbstractAppender {
         super.start();
     }
 
-
     @Override
-    public void stop() {
+    public boolean stop(final long timeout, final TimeUnit timeUnit) {
+        setStopping();
+        boolean stopped = super.stop(timeout, timeUnit, false);
         if (logzioSender != null) logzioSender.stop();
         if ( tasksExecutor != null ) tasksExecutor.shutdownNow();
-        super.stop();
+        setStopped();
+        return stopped;
     }
 
 
