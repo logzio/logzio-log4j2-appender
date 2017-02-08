@@ -216,8 +216,8 @@ public class LogzioAppender extends AbstractAppender {
                              String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
                              String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds) {
         super(name, filter, null, ignoreExceptions);
-        this.logzioToken = token;
-        this.logzioUrl = url;
+        this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
+        this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
         this.logzioType = type;
         this.drainTimeoutSec = drainTimeoutSec;
         this.fileSystemFullPercentThreshold = fileSystemFullPercentThreshold;
