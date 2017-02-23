@@ -122,23 +122,17 @@ public class LogzioAppender extends AbstractAppender {
         }
 
         public Builder setName(String name) {
-            if (name == null) {
-                statusLogger.warn("No name provided for LogzioAppender");
-                name = "LogzioAppender";
-            }
             this.name = name;
             return this;
         }
 
         public Builder setLogzioUrl(String logzioUrl) {
-            if ( logzioUrl != null ) {
-                this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(logzioUrl);
-            }
+            this.logzioUrl = logzioUrl;
             return this;
         }
 
         public Builder setLogzioToken(String logzioToken) {
-            this.logzioToken = getValueFromSystemEnvironmentIfNeeded(logzioToken);
+            this.logzioToken = logzioToken;
             return this;
         }
 
@@ -216,8 +210,8 @@ public class LogzioAppender extends AbstractAppender {
                              String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
                              String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds) {
         super(name, filter, null, ignoreExceptions);
-        this.logzioToken = token;
-        this.logzioUrl = url;
+        this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
+        this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
         this.logzioType = type;
         this.drainTimeoutSec = drainTimeoutSec;
         this.fileSystemFullPercentThreshold = fileSystemFullPercentThreshold;
