@@ -53,7 +53,6 @@ public class Log4j2AppenderTest {
         testLogger.warn(message2);
 
         sleepSeconds(drainTimeout * 2);
-
         mockListener.assertNumberOfReceivedMsgs(2);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
         mockListener.assertLogReceivedIs(message2, token, type, loggerName, Level.WARN.name());
