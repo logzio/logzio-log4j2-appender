@@ -1,6 +1,7 @@
 package io.logz.log4j2;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
 import io.logz.sender.LogzioSender;
 import io.logz.sender.SenderStatusReporter;
 import io.logz.sender.com.google.gson.JsonObject;
@@ -16,7 +17,6 @@ import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
-import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.logging.log4j.core.util.Log4jThreadFactory;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
@@ -324,9 +324,9 @@ public class LogzioAppender extends AbstractAppender {
         logMessage.addProperty(MESSAGE, loggingEvent.getMessage().getFormattedMessage());
         logMessage.addProperty(LOGGER, loggingEvent.getLoggerName());
         logMessage.addProperty(THREAD, loggingEvent.getThreadName());
-        ThrowableProxy throwableProxy = loggingEvent.getThrownProxy();
-        if (throwableProxy != null ) {
-            logMessage.addProperty(EXCEPTION, throwableProxy.getCauseStackTraceAsString() );
+        Throwable throwable = loggingEvent.getThrown();
+        if (throwable != null) {
+            logMessage.addProperty(EXCEPTION, Throwables.getStackTraceAsString(throwable));
         }
 
         if (additionalFieldsMap != null) {
