@@ -326,7 +326,6 @@ public class LogzioAppender extends AbstractAppender {
         logMessage.addProperty(THREAD, loggingEvent.getThreadName());
         Throwable throwable = loggingEvent.getThrown();
         if (throwable != null) {
-            Throwables.getStackTraceAsString(throwable);
             logMessage.addProperty(EXCEPTION, Throwables.getStackTraceAsString(throwable));
         }
 
