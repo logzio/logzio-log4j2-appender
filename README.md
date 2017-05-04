@@ -13,7 +13,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.4</version>
+        <version>1.0.5</version>
     </dependency>
 ```
 
@@ -120,8 +120,10 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 1.0.5 
+   - fix an issue: [Log4j2 version 2.8.2 throws exception - backward compatibility problem ](https://github.com/logzio/logzio-log4j2-appender/issues)
  - 1.0.3 - 1.0.4
-   - - add error message about reason of 400(BAD REQUEST)
+   - add error message about reason of 400(BAD REQUEST)
  - 1.0.2
    - Fix problem where logzioToken and logzioUrl could not be environment variables
  - 1.0.1
