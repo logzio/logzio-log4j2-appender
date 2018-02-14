@@ -23,6 +23,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
         <LogzioAppender name="Logzio">
             <logzioToken>your-logzio-personal-token-from-settings</logzioToken>
             <logzioType>myAwesomeType</logzioType>
+            <logzioUrl>https://listener.logz.io:8071</logzioUrl>
         </LogzioAppender>
        
     </Appenders>
@@ -37,7 +38,8 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
 | Parameter          | Default                              | Explained  |
 | ------------------ | ------------------------------------ | ----- |
 | **logzioToken**              | *None*                                 | Your Logz.io token, which can be found under "settings" in your account, If the value begins with `$` then the appender looks for an environment variable with the name specified. For example: `$LOGZIO_TOKEN` will look for environment variable named `LOGZIO_TOKEN` |
-| **logzioType**               | *java*                                 | The [log type](http://support.logz.io/support/solutions/articles/6000103063-what-is-type-) for that appender |
+| **logzioType**               | *java*                                 | The [log type](https://support.logz.io/hc/en-us/articles/209486049-What-is-Type-) for that appender, it must not contain any spaces |
+| **logzioUrl**               | *https://listener.logz.io:8071*                                 | The url that the appender sends to.  If your account is in the EU you must use https://listener-eu.logz.io:8071 |
 | **drainTimeoutSec**       | *5*                                    | How often the appender should drain the buffer (in seconds) |
 | **fileSystemFullPercentThreshold** | *98*                                   | The percent of used file system space at which the appender will stop buffering. When we will reach that percentage, the file system in which the buffer is stored will drop all new logs until the percentage of used space drops below that threshold. Set to -1 to never stop processing new logs |
 | **bufferDir**          | *System.getProperty("java.io.tmpdir")* | Where the appender should store the buffer |
