@@ -6,7 +6,7 @@
 
     <groupId>io.logz.log4j2</groupId>
     <artifactId>logzio-log4j2-appender</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
 
     <packaging>jar</packaging>
     <name>Logz.io Log4j2 Appender</name>
