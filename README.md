@@ -13,7 +13,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.6</version>
+        <version>1.0.7</version>
     </dependency>
 ```
 
@@ -122,7 +122,7 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
- - 1.0.6 
+ - 1.0.6 - 1.0.7
    - fix issue: [Guava and logzio.sender libraries are shaded but still a dependency](https://github.com/logzio/logzio-log4j2-appender/issues/15)
  - 1.0.5 
    - fix an issue: [Log4j2 version 2.8.2 throws exception - backward compatibility problem ](https://github.com/logzio/logzio-log4j2-appender/issues)
