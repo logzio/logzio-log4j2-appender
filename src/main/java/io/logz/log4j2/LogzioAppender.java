@@ -85,6 +85,9 @@ public class LogzioAppender extends AbstractAppender {
         String bufferDir;
 
         @PluginBuilderAttribute
+        boolean compressRequests = false;
+
+        @PluginBuilderAttribute
         int socketTimeoutMs = 10*1000;
 
         @PluginBuilderAttribute
@@ -108,7 +111,7 @@ public class LogzioAppender extends AbstractAppender {
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
-                    bufferDir, socketTimeoutMs, connectTimeoutMs,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds);
+                    bufferDir, socketTimeoutMs, connectTimeoutMs,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds, compressRequests);
         }
 
         public Builder setFilter(Filter filter) {
@@ -171,6 +174,11 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
+        public Builder setCompressRequests(boolean compressRequests) {
+            this.compressRequests = compressRequests;
+            return this;
+        }
+
         public Builder setAdditionalFields(String additionalFields) {
             this.additionalFields = additionalFields;
             return this;
@@ -199,6 +207,7 @@ public class LogzioAppender extends AbstractAppender {
     private final int socketTimeout;
     private final boolean debug;
     private final boolean addHostname;
+    private final boolean compressRequests;
     private final int gcPersistedQueueFilesIntervalSeconds;
 
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
@@ -208,7 +217,7 @@ public class LogzioAppender extends AbstractAppender {
     private LogzioAppender(String name, Filter filter, final boolean ignoreExceptions, String url,
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
                              String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
-                             String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds) {
+                             String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds, boolean compressRequests) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -221,6 +230,7 @@ public class LogzioAppender extends AbstractAppender {
         this.debug = debug;
         this.addHostname = addHostname;
         this.gcPersistedQueueFilesIntervalSeconds = gcPersistedQueueFilesIntervalSeconds;
+        this.compressRequests = compressRequests;
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
                 if (reservedFields.contains(k)) {
@@ -277,7 +287,7 @@ public class LogzioAppender extends AbstractAppender {
             tasksExecutor = Executors.newScheduledThreadPool(2, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSender = LogzioSender.getOrCreateSenderByType(logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
                     bufferDirFile, logzioUrl, socketTimeout, connectTimeout, debug,
-                    new StatusReporter(), tasksExecutor, gcPersistedQueueFilesIntervalSeconds);
+                    new StatusReporter(), tasksExecutor, gcPersistedQueueFilesIntervalSeconds, compressRequests);
             logzioSender.start();
         } catch (LogzioParameterErrorException e) {
             statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);
@@ -336,14 +346,16 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     private static String getValueFromSystemEnvironmentIfNeeded(String value) {
-        if (value == null)
-            return value;
-        if (value.startsWith("$")) {
-            return System.getenv(value.replace("$", ""));
+        if (value != null && value.startsWith("$")) {
+            String variableName = value.replace("$", "");
+            String envVariable = System.getenv(variableName);
+            if(envVariable == null || envVariable.isEmpty()) {
+                envVariable = System.getProperty(variableName);
+            }
+            return envVariable;
         }
         return value;
     }
-
 
     private class StatusReporter implements SenderStatusReporter {
 
