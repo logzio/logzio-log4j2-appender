@@ -37,7 +37,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
 ### Parameters
 | Parameter          | Default                              | Explained  |
 | ------------------ | ------------------------------------ | ----- |
-| **logzioToken**              | *None*                                 | Your Logz.io token, which can be found under "settings" in your account, If the value begins with `$` then the appender looks for an environment variable with the name specified. For example: `$LOGZIO_TOKEN` will look for environment variable named `LOGZIO_TOKEN` |
+| **logzioToken**              | *None*                                 | Your Logz.io token, which can be found under "settings" in your account, If the value begins with `$` then the appender looks for an environment variable or system property with the name specified. For example: `$LOGZIO_TOKEN` will look for environment variable named `LOGZIO_TOKEN` |
 | **logzioType**               | *java*                                 | The [log type](https://support.logz.io/hc/en-us/articles/209486049-What-is-Type-) for that appender, it must not contain any spaces |
 | **logzioUrl**               | *https://listener.logz.io:8071*                                 | The url that the appender sends to.  If your account is in the EU you must use https://listener-eu.logz.io:8071 |
 | **drainTimeoutSec**       | *5*                                    | How often the appender should drain the buffer (in seconds) |
@@ -125,6 +125,7 @@ Will send a log to Logz.io that looks like this:
 ### Release notes
  - 1.0.8
    - added `compressRequests` parameter to enable gzip compression of the logs before they are sent.
+   - added option to inject system property value into additionalFields, logzioUrl and token.
  - 1.0.6 - 1.0.7
    - fix issue: [Guava and logzio.sender libraries are shaded but still a dependency](https://github.com/logzio/logzio-log4j2-appender/issues/15)
  - 1.0.5 
