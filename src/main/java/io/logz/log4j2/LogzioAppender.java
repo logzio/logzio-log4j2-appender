@@ -88,7 +88,7 @@ public class LogzioAppender extends AbstractAppender {
         int socketTimeoutMs = 10*1000;
 
         @PluginBuilderAttribute
-        int connectTimeoutMs = 10*1000;;
+        int connectTimeoutMs = 10*1000;
 
         @PluginBuilderAttribute
         boolean addHostname = false;
@@ -105,10 +105,13 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         private boolean ignoreExceptions = true;
 
+        @PluginBuilderAttribute
+        private boolean compressRequests = false;
+
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
-                    bufferDir, socketTimeoutMs, connectTimeoutMs,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds);
+                    bufferDir, socketTimeoutMs, connectTimeoutMs,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds, compressRequests);
         }
 
         public Builder setFilter(Filter filter) {
@@ -185,6 +188,12 @@ public class LogzioAppender extends AbstractAppender {
             this.gcPersistedQueueFilesIntervalSeconds = gcPersistedQueueFilesIntervalSeconds;
             return this;
         }
+
+        public Builder setCompressRequests(boolean compressRequests) {
+            this.compressRequests = compressRequests;
+            return this;
+        }
+
     }
 
     private LogzioSender logzioSender;
@@ -200,6 +209,7 @@ public class LogzioAppender extends AbstractAppender {
     private final boolean debug;
     private final boolean addHostname;
     private final int gcPersistedQueueFilesIntervalSeconds;
+    private final boolean compressRequests;
 
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
 
@@ -208,7 +218,7 @@ public class LogzioAppender extends AbstractAppender {
     private LogzioAppender(String name, Filter filter, final boolean ignoreExceptions, String url,
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
                              String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
-                             String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds) {
+                             String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds, boolean compressRequests) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -221,6 +231,7 @@ public class LogzioAppender extends AbstractAppender {
         this.debug = debug;
         this.addHostname = addHostname;
         this.gcPersistedQueueFilesIntervalSeconds = gcPersistedQueueFilesIntervalSeconds;
+        this.compressRequests = compressRequests;
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
                 if (reservedFields.contains(k)) {
@@ -277,7 +288,7 @@ public class LogzioAppender extends AbstractAppender {
             tasksExecutor = Executors.newScheduledThreadPool(2, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSender = LogzioSender.getOrCreateSenderByType(logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
                     bufferDirFile, logzioUrl, socketTimeout, connectTimeout, debug,
-                    new StatusReporter(), tasksExecutor, gcPersistedQueueFilesIntervalSeconds);
+                    new StatusReporter(), tasksExecutor, gcPersistedQueueFilesIntervalSeconds, compressRequests);
             logzioSender.start();
         } catch (LogzioParameterErrorException e) {
             statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);

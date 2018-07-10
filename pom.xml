@@ -6,7 +6,7 @@
 
     <groupId>io.logz.log4j2</groupId>
     <artifactId>logzio-log4j2-appender</artifactId>
-    <version>1.0.7</version>
+    <version>0-SNAPSHOT</version>
 
     <packaging>jar</packaging>
     <name>Logz.io Log4j2 Appender</name>
@@ -36,7 +36,7 @@
     </scm>
 
     <properties>
-        <logzio-sender-version>1.0.7</logzio-sender-version>
+        <logzio-sender-version>1.0.10</logzio-sender-version>
         <log4j2-version>2.8.2</log4j2-version>
     </properties>
 
@@ -97,7 +97,7 @@
                 <version>1.6.3</version>
                 <extensions>true</extensions>
                 <configuration>
-                    <serverId>sonatype-nexus-staging</serverId>
+                    <serverId>ossrh-nexus</serverId>
                     <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                     <autoReleaseAfterClose>true</autoReleaseAfterClose>
                 </configuration>
@@ -164,6 +164,11 @@
             <artifactId>logzio-sender-test</artifactId>
             <version>${logzio-sender-version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>25.0-jre</version>
         </dependency>
     </dependencies>
 </project>
