@@ -13,7 +13,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.7</version>
+        <version>1.0.8</version>
     </dependency>
 ```
 
@@ -48,6 +48,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
 | **addHostname**       | *false*                                    | Optional. If true, then a field named 'hostname' will be added holding the host name of the machine. If from some reason there's no defined hostname, this field won't be added |
 | **additionalFields**       | *None*                                    | Optional. Allows to add additional fields to the JSON message sent. The format is "fieldName1=fieldValue1;fieldName2=fieldValue2". You can optionally inject an environment variable value using the following format: "fieldName1=fieldValue1;fieldName2=$ENV_VAR_NAME". In that case, the environment variable should be the only value. In case the environment variable can't be resolved, the field will be omitted. |
 | **debug**       | *false*                                    | Print some debug messages to stdout to help to diagnose issues |
+| **compressRequests**       | *false*                                    | Boolean. `true` if logs are compressed in gzip format before sending. `false` if logs are sent uncompressed. |
 
 
 ### Code Example
@@ -122,6 +123,8 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 1.0.8
+   - added `compressRequests` parameter to enable gzip compression of the logs before they are sent.
  - 1.0.6 - 1.0.7
    - fix issue: [Guava and logzio.sender libraries are shaded but still a dependency](https://github.com/logzio/logzio-log4j2-appender/issues/15)
  - 1.0.5 

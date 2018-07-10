@@ -59,6 +59,25 @@ public class Log4j2AppenderTest {
     }
 
     @Test
+    public void simpleGzipAppending() throws Exception {
+        String token = "aBcDeFgHiJkLmNoPqRsTGzIp";
+        String type = "awesomeGzipType";
+        String loggerName = "simpleGzipAppending";
+        int drainTimeout = 1;
+        String message1 = "Testing.." + random(5);
+        String message2 = "Warning test.." + random(5);
+
+        Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, null, true);
+        testLogger.info(message1);
+        testLogger.warn(message2);
+
+        sleepSeconds(drainTimeout * 2);
+        mockListener.assertNumberOfReceivedMsgs(2);
+        mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
+        mockListener.assertLogReceivedIs(message2, token, type, loggerName, Level.WARN.name());
+    }
+
+    @Test
     public void validateAdditionalFields() throws Exception {
         String token = "validatingAdditionalFields";
         String type = "willTryWithOrWithoutEnvironmentVariables";
@@ -195,7 +214,7 @@ public class Log4j2AppenderTest {
     }
 
     private Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
-                                  boolean addHostname, String additionalFields) {
+                                  boolean addHostname, String additionalFields, boolean compressRequests) {
         logger.info("Creating logger {}. token={}, type={}, drainTimeout={}, addHostname={}, additionalFields={}",
                 loggerName, token, type, drainTimeout, addHostname, additionalFields);
         Logger log4j2Logger =  LogManager.getLogger(loggerName);
@@ -205,6 +224,7 @@ public class Log4j2AppenderTest {
         logzioLog4j2AppenderBuilder.setDebug(true);
         logzioLog4j2AppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
         logzioLog4j2AppenderBuilder.setAddHostname(addHostname);
+        logzioLog4j2AppenderBuilder.setCompressRequests(compressRequests);
 
         if (drainTimeout != null) {
             logzioLog4j2AppenderBuilder.setDrainTimeoutSec(drainTimeout);
@@ -222,6 +242,12 @@ public class Log4j2AppenderTest {
 
         return log4j2Logger;
     }
+
+    private Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
+                                boolean addHostname, String additionalFields){
+        return createLogger(token, type, loggerName, drainTimeout, addHostname, additionalFields, false);
+    }
+
 
     private void assertAdditionalFields(LogRequest logRequest, Map<String, String> additionalFields) {
         additionalFields.forEach((field, value) -> {
