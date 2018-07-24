@@ -36,7 +36,7 @@
     </scm>
 
     <properties>
-        <logzio-sender-version>1.0.10</logzio-sender-version>
+        <logzio-sender-version>1.0.11</logzio-sender-version>
         <log4j2-version>2.8.2</log4j2-version>
     </properties>
 
@@ -164,11 +164,6 @@
             <artifactId>logzio-sender-test</artifactId>
             <version>${logzio-sender-version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>25.0-jre</version>
         </dependency>
     </dependencies>
 </project>
