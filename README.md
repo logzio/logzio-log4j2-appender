@@ -123,6 +123,8 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 1.0.10
+   - Allow to set type using enviroment variables.
  - 1.0.9
    - fix guava shaded dependency.
  - 1.0.8
