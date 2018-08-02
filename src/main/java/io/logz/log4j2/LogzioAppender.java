@@ -222,7 +222,7 @@ public class LogzioAppender extends AbstractAppender {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
-        this.logzioType = type;
+        this.logzioType = getValueFromSystemEnvironmentIfNeeded(type);
         this.drainTimeoutSec = drainTimeoutSec;
         this.fileSystemFullPercentThreshold = fileSystemFullPercentThreshold;
         this.bufferDir = bufferDir;
