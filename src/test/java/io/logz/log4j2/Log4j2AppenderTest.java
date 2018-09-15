@@ -23,10 +23,10 @@ import static org.assertj.core.api.Assertions.fail;
 /**
  * @author MarinaRazumovsky
  */
-public class Log4j2AppenderTest {
+public abstract class Log4j2AppenderTest {
 
     private final static Logger logger = LogManager.getLogger(Log4j2AppenderTest.class);
-    protected MockLogzioBulkListener mockListener;
+    MockLogzioBulkListener mockListener;
 
     @Before
     public void startMockListener() throws Exception {
@@ -40,10 +40,10 @@ public class Log4j2AppenderTest {
     }
 
     @Test
-    public void simpleAppending() throws Exception {
+    public void simpleAppending() {
         String token = "aBcDeFgHiJkLmNoPqRsT";
-        String type = "awesomeType";
-        String loggerName = "simpleAppending";
+        String type = random(8);
+        String loggerName = "simpleAppending" + random(8);
         int drainTimeout = 1;
         String message1 = "Testing.." + random(5);
         String message2 = "Warning test.." + random(5);
@@ -59,10 +59,10 @@ public class Log4j2AppenderTest {
     }
 
     @Test
-    public void simpleGzipAppending() throws Exception {
+    public void simpleGzipAppending() {
         String token = "aBcDeFgHiJkLmNoPqRsTGzIp";
-        String type = "awesomeGzipType";
-        String loggerName = "simpleGzipAppending";
+        String type = random(8);
+        String loggerName = "simpleGzipAppending"+ random(8);
         int drainTimeout = 1;
         String message1 = "Testing.." + random(5);
         String message2 = "Warning test.." + random(5);
@@ -78,13 +78,14 @@ public class Log4j2AppenderTest {
     }
 
     @Test
-    public void validateAdditionalFields() throws Exception {
+    public void validateAdditionalFields() {
         String token = "validatingAdditionalFields";
-        String type = "willTryWithOrWithoutEnvironmentVariables";
-        String loggerName = "additionalLogger";
+        String type = random(8);
+        String loggerName = "additionalLogger" + random(8);
         int drainTimeout = 1;
         String message1 = "Just a log - " + random(5);
         Map<String,String > additionalFields = new HashMap<>();
+
         String additionalFieldsString = "java_home=$JAVA_HOME;testing=yes;message=override";
         additionalFields.put("java_home", System.getenv("JAVA_HOME"));
         additionalFields.put("testing", "yes");
@@ -103,8 +104,8 @@ public class Log4j2AppenderTest {
     @Test
     public void existingHostname() throws Exception {
         String token = "checkingHostname";
-        String type = "withOrWithoutHostnamr";
-        String loggerName = "runningOutOfIdeasHere";
+        String type = random(8);
+        String loggerName = "runningOutOfIdeasHere" + random(8);
         int drainTimeout = 1;
         String message1 = "Hostname log - " +  random(5);
 
@@ -124,10 +125,10 @@ public class Log4j2AppenderTest {
 
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void sendException() throws Exception {
+    public void sendException() {
         String token = "checkingExceptions";
-        String type = "badType";
-        String loggerName = "exceptionProducer";
+        String type = random(8);
+        String loggerName = "exceptionProducer" + random(8);
         int drainTimeout = 1;
         Throwable exception = null;
         String message1 = "This is not an int..";
@@ -152,12 +153,12 @@ public class Log4j2AppenderTest {
     }
 
     @Test
-    public void testMDC() throws Exception {
+    public void testMDC() {
         String token = "mdcTokensAreTheBest";
-        String type = "mdcType";
-        String loggerName = "mdcTesting";
+        String type = random(8);
+        String loggerName = "mdcTesting" + random(8);
         int drainTimeout = 1;
-        String message1 = "Simple log line - "+random(5);
+        String message1 = "Simple log line - " + random(5);
         String mdcKey = "mdc-key";
         String mdcValue = "mdc-value";
 
@@ -174,14 +175,14 @@ public class Log4j2AppenderTest {
     }
 
     @Test
-    public void testMarker() throws Exception {
+    public void testMarker() {
         String token = "markerToken";
-        String type = "markerType";
-        String loggerName = "markerTesting";
+        String type = random(8);
+        String loggerName = "markerTesting" + random(8);
         String markerKey = "marker";
         String markerTestValue = "MyMarker";
         int drainTimeout = 1;
-        String message1 = "Simple log line - "+random(5);
+        String message1 = "Simple log line - " + random(5);
         Marker marker = MarkerManager.getMarker(markerTestValue);
 
         Logger testLogger = createLogger(token, type, loggerName, drainTimeout, false, null);
@@ -198,8 +199,8 @@ public class Log4j2AppenderTest {
     @Test
     public void testTokenAndLogzioUrlFromSystemEnvironment() {
         String token = System.getenv("JAVA_HOME");
-        String type = "testType";
-        String loggerName = "testLogger";
+        String type = random(8);
+        String loggerName = "testLogger" + random(8);
         int drainTimeout = 1;
         String message1 = "Just a log - " + random(5);
 
@@ -212,36 +213,8 @@ public class Log4j2AppenderTest {
         LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
         mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
     }
-
-    private Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
-                                  boolean addHostname, String additionalFields, boolean compressRequests) {
-        logger.info("Creating logger {}. token={}, type={}, drainTimeout={}, addHostname={}, additionalFields={}",
-                loggerName, token, type, drainTimeout, addHostname, additionalFields);
-        Logger log4j2Logger =  LogManager.getLogger(loggerName);
-        LogzioAppender.Builder logzioLog4j2AppenderBuilder = LogzioAppender.newBuilder();
-        logzioLog4j2AppenderBuilder.setLogzioToken(token);
-        logzioLog4j2AppenderBuilder.setLogzioType(type);
-        logzioLog4j2AppenderBuilder.setDebug(true);
-        logzioLog4j2AppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioLog4j2AppenderBuilder.setAddHostname(addHostname);
-        logzioLog4j2AppenderBuilder.setCompressRequests(compressRequests);
-
-        if (drainTimeout != null) {
-            logzioLog4j2AppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        }
-
-        if (additionalFields != null) {
-            logzioLog4j2AppenderBuilder.setAdditionalFields(additionalFields);
-        }
-
-        LogzioAppender appender = logzioLog4j2AppenderBuilder.build();
-        appender.start();
-        assertThat(appender.isStarted()).isTrue();
-        ((org.apache.logging.log4j.core.Logger) log4j2Logger).addAppender(appender);
-        ((org.apache.logging.log4j.core.Logger) log4j2Logger).setAdditive(false);
-
-        return log4j2Logger;
-    }
+    abstract Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
+                                  boolean addHostname, String additionalFields, boolean compressRequests);
 
     private Logger createLogger(String token, String type, String loggerName, Integer drainTimeout,
                                 boolean addHostname, String additionalFields){

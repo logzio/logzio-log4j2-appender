@@ -2,6 +2,7 @@ package io.logz.log4j2;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
+import io.logz.sender.HttpsRequestConfiguration;
 import io.logz.sender.LogzioSender;
 import io.logz.sender.SenderStatusReporter;
 import io.logz.sender.com.google.gson.JsonObject;
@@ -48,7 +49,7 @@ public class LogzioAppender extends AbstractAppender {
     private static final String THREAD = "thread";
     private static final String EXCEPTION = "exception";
 
-    private static final Set<String> reservedFields =  new HashSet<>(Arrays.asList(new String[] {TIMESTAMP,LOGLEVEL, MARKER, MESSAGE,LOGGER,THREAD,EXCEPTION}));
+    private static final Set<String> reservedFields =  new HashSet<>(Arrays.asList(TIMESTAMP,LOGLEVEL, MARKER, MESSAGE,LOGGER,THREAD,EXCEPTION));
 
     private static Logger statusLogger = StatusLogger.getLogger();
 
@@ -108,10 +109,18 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         private boolean compressRequests = false;
 
+        @PluginBuilderAttribute
+        private boolean inMemoryBuffer = false;
+
+        @PluginBuilderAttribute
+        private int bufferSizeThreshold  = 100 * 1024 *1024;
+
         @Override
         public LogzioAppender build() {
-            return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
-                    bufferDir, socketTimeoutMs, connectTimeoutMs,addHostname,additionalFields,debug,gcPersistedQueueFilesIntervalSeconds, compressRequests);
+            return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
+                    drainTimeoutSec, fileSystemFullPercentThreshold, bufferDir, socketTimeoutMs, connectTimeoutMs,
+                    addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
+                    inMemoryBuffer, bufferSizeThreshold);
         }
 
         public Builder setFilter(Filter filter) {
@@ -194,10 +203,19 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
+        public Builder setInMemoryBuffer(boolean inMemoryBuffer) {
+            this.inMemoryBuffer = inMemoryBuffer;
+            return this;
+        }
+
+        public Builder setBufferSizeThreshold(int bufferSizeThreshold) {
+            this.bufferSizeThreshold = bufferSizeThreshold;
+            return this;
+        }
+
     }
 
     private LogzioSender logzioSender;
-
     private final String logzioToken;
     private final String logzioType ;
     private final int drainTimeoutSec;
@@ -210,15 +228,16 @@ public class LogzioAppender extends AbstractAppender {
     private final boolean addHostname;
     private final int gcPersistedQueueFilesIntervalSeconds;
     private final boolean compressRequests;
-
+    private final boolean inMemoryBuffer;
+    private final int bufferSizeThreshold;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
-
     private ScheduledExecutorService tasksExecutor;
 
     private LogzioAppender(String name, Filter filter, final boolean ignoreExceptions, String url,
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
                              String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
-                             String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds, boolean compressRequests) {
+                             String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds,
+                           boolean compressRequests, boolean inMemoryBuffer, int bufferSizeThreshold) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -232,6 +251,9 @@ public class LogzioAppender extends AbstractAppender {
         this.addHostname = addHostname;
         this.gcPersistedQueueFilesIntervalSeconds = gcPersistedQueueFilesIntervalSeconds;
         this.compressRequests = compressRequests;
+        this.inMemoryBuffer = inMemoryBuffer;
+        this.bufferSizeThreshold = bufferSizeThreshold;
+
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
                 if (reservedFields.contains(k)) {
@@ -249,12 +271,22 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     public void start() {
-        if (!(fileSystemFullPercentThreshold >= 1 && fileSystemFullPercentThreshold <= 100)) {
-            if (fileSystemFullPercentThreshold != -1) {
-                statusLogger.error("fileSystemFullPercentThreshold should be a number between 1 and 100, or -1");
-                return;
-            }
+        HttpsRequestConfiguration conf;
+        try {
+            conf = HttpsRequestConfiguration
+                    .builder()
+                    .setLogzioListenerUrl(logzioUrl)
+                    .setSocketTimeout(socketTimeout)
+                    .setLogzioType(logzioType)
+                    .setLogzioToken(logzioToken)
+                    .setConnectTimeout(connectTimeout)
+                    .setCompressRequests(compressRequests)
+                    .build();
+        } catch (LogzioParameterErrorException e) {
+            statusLogger.error("Some of the configuration parameters of logz.io is wrong: " + e.getMessage(), e);
+            return;
         }
+
         try {
             if (addHostname) {
                 String hostname = InetAddress.getLocalHost().getHostName();
@@ -263,37 +295,74 @@ public class LogzioAppender extends AbstractAppender {
         } catch (UnknownHostException e) {
             statusLogger.warn("The configuration addHostName was specified but the host could not be resolved, thus the field 'hostname' will not be added", e);
         }
-        String bufferDirPath;
-        if (bufferDir != null) {
-            bufferDirPath = bufferDir;
-            File bufferFile = new File(bufferDirPath);
-            if (bufferFile.exists()) {
-                if (!bufferFile.canWrite()) {
-                    statusLogger.error("We cant write to your bufferDir location: "+bufferFile.getAbsolutePath());
-                    return;
-                }
-            } else {
-                if (!bufferFile.mkdirs()) {
-                    statusLogger.error("We cant create your bufferDir location: "+bufferFile.getAbsolutePath());
+
+        if (!inMemoryBuffer) {
+            if (!(fileSystemFullPercentThreshold >= 1 && fileSystemFullPercentThreshold <= 100)) {
+                if (fileSystemFullPercentThreshold != -1) {
+                    statusLogger.error("fileSystemFullPercentThreshold should be a number between 1 and 100, or -1");
                     return;
                 }
             }
-        }
-        else {
-            bufferDirPath = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer";
-        }
-        File bufferDirFile = new File(bufferDirPath,logzioType);
 
-        try {
-            tasksExecutor = Executors.newScheduledThreadPool(2, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
-            logzioSender = LogzioSender.getOrCreateSenderByType(logzioToken, logzioType, drainTimeoutSec, fileSystemFullPercentThreshold,
-                    bufferDirFile, logzioUrl, socketTimeout, connectTimeout, debug,
-                    new StatusReporter(), tasksExecutor, gcPersistedQueueFilesIntervalSeconds, compressRequests);
-            logzioSender.start();
-        } catch (LogzioParameterErrorException e) {
-            statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);
-            return;
+            String bufferDirPath;
+            if (bufferDir != null) {
+                bufferDirPath = bufferDir;
+                File bufferFile = new File(bufferDirPath);
+                if (bufferFile.exists()) {
+                    if (!bufferFile.canWrite()) {
+                        statusLogger.error("We cant write to your bufferDir location: " + bufferFile.getAbsolutePath());
+                        return;
+                    }
+                } else {
+                    if (!bufferFile.mkdirs()) {
+                        statusLogger.error("We cant create your bufferDir location: " + bufferFile.getAbsolutePath());
+                        return;
+                    }
+                }
+            }
+            else {
+                bufferDirPath = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer";
+            }
+            File bufferDirFile = new File(bufferDirPath, logzioType);
+            tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
+            try {
+                logzioSender = LogzioSender
+                        .builder()
+                        .setDebug(debug)
+                        .setTasksExecutor(tasksExecutor)
+                        .setDrainTimeout(drainTimeoutSec)
+                        .setReporter(new StatusReporter())
+                        .setHttpsRequestConfiguration(conf)
+                        .WithDiskMemoryQueue()
+                          .setBufferDir(bufferDirFile)
+                          .setFsPercentThreshold(fileSystemFullPercentThreshold)
+                          .setGcPersistedQueueFilesIntervalSeconds(gcPersistedQueueFilesIntervalSeconds)
+                        .EndDiskQueue()
+                        .build();
+            } catch (LogzioParameterErrorException e) {
+                statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);
+                return;
+            }
+        }else {
+            tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
+            try {
+                logzioSender = LogzioSender
+                        .builder()
+                        .setDebug(debug)
+                        .setTasksExecutor(tasksExecutor)
+                        .setDrainTimeout(drainTimeoutSec)
+                        .setReporter(new StatusReporter())
+                        .setHttpsRequestConfiguration(conf)
+                        .WithInMemoryLogsBuffer()
+                          .setBufferThreshold(bufferSizeThreshold)
+                        .EndInMemoryLogsBuffer()
+                        .build();
+            } catch (LogzioParameterErrorException e) {
+                statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);
+                return;
+            }
         }
+        logzioSender.start();
         super.start();
     }
 
@@ -348,7 +417,7 @@ public class LogzioAppender extends AbstractAppender {
 
     private static String getValueFromSystemEnvironmentIfNeeded(String value) {
         if (value == null)
-            return value;
+            return null;
         if (value.startsWith("$")) {
             return System.getenv(value.replace("$", ""));
         }
