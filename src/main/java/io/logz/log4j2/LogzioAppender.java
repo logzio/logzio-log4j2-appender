@@ -369,8 +369,7 @@ public class LogzioAppender extends AbstractAppender {
         else {
             bufferDirPath = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer";
         }
-        File bufferDirFile = new File(bufferDirPath, logzioType);
-        return bufferDirFile;
+        return new File(bufferDirPath, logzioType);
     }
 
     private boolean validateFSFullPercentThreshold() {
