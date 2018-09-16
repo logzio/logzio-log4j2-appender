@@ -271,9 +271,62 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     public void start() {
-        HttpsRequestConfiguration conf;
+        HttpsRequestConfiguration conf = getHttpsRequestConfiguration();
+        if (conf == null) return;
+        setHostname();
+        LogzioSender.Builder logzioSenderBuilder = new LogzioSender.Builder()
+                .setDebug(debug)
+                .setDrainTimeout(drainTimeoutSec)
+                .setReporter(new StatusReporter())
+                .setHttpsRequestConfiguration(conf);
+
+        if (inMemoryBuffer) {
+            if (!validateBufferSizeThreshold()) return;
+            tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
+            logzioSenderBuilder
+                    .setTasksExecutor(tasksExecutor)
+                    .WithInMemoryLogsBuffer()
+                    .setBufferThreshold(bufferSizeThreshold)
+                    .EndInMemoryLogsBuffer();
+        }else {
+            if (!validateFSFullPercentThreshold()) return;
+
+            File bufferDirFile = getBufferDirFile();
+            if (bufferDirFile == null) return;
+
+            tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
+            logzioSenderBuilder
+                    .setTasksExecutor(tasksExecutor)
+                    .WithDiskMemoryQueue()
+                    .setBufferDir(bufferDirFile)
+                    .setFsPercentThreshold(fileSystemFullPercentThreshold)
+                    .setGcPersistedQueueFilesIntervalSeconds(gcPersistedQueueFilesIntervalSeconds)
+                    .EndDiskQueue();
+        }
         try {
-            conf = HttpsRequestConfiguration
+            logzioSender = logzioSenderBuilder.build();
+        } catch (LogzioParameterErrorException e) {
+            statusLogger.error("Couldn't build logzio sender: " + e.getMessage(), e);
+            return;
+        }
+        logzioSender.start();
+        super.start();
+    }
+
+    private void setHostname() {
+        try {
+            if (addHostname) {
+                String hostname = InetAddress.getLocalHost().getHostName();
+                additionalFieldsMap.put("hostname", hostname);
+            }
+        } catch (UnknownHostException e) {
+            statusLogger.warn("The configuration addHostName was specified but the host could not be resolved, thus the field 'hostname' will not be added", e);
+        }
+    }
+
+    private HttpsRequestConfiguration getHttpsRequestConfiguration() {
+        try {
+            return HttpsRequestConfiguration
                     .builder()
                     .setLogzioListenerUrl(logzioUrl)
                     .setSocketTimeout(socketTimeout)
@@ -284,92 +337,50 @@ public class LogzioAppender extends AbstractAppender {
                     .build();
         } catch (LogzioParameterErrorException e) {
             statusLogger.error("Some of the configuration parameters of logz.io is wrong: " + e.getMessage(), e);
-            return;
+            return null;
         }
+    }
 
-        try {
-            if (addHostname) {
-                String hostname = InetAddress.getLocalHost().getHostName();
-                additionalFieldsMap.put("hostname", hostname);
-            }
-        } catch (UnknownHostException e) {
-            statusLogger.warn("The configuration addHostName was specified but the host could not be resolved, thus the field 'hostname' will not be added", e);
+    private boolean validateBufferSizeThreshold() {
+        if (bufferSizeThreshold <= 0 && bufferSizeThreshold != -1) {
+            statusLogger.error("bufferSizeThreshold should be a non zero integer or -1");
+            return false;
         }
+        return true;
+    }
 
-        if (!inMemoryBuffer) {
-            if (!(fileSystemFullPercentThreshold >= 1 && fileSystemFullPercentThreshold <= 100)) {
-                if (fileSystemFullPercentThreshold != -1) {
-                    statusLogger.error("fileSystemFullPercentThreshold should be a number between 1 and 100, or -1");
-                    return;
+    private File getBufferDirFile() {
+        String bufferDirPath;
+        if (bufferDir != null) {
+            bufferDirPath = bufferDir;
+            File bufferFile = new File(bufferDirPath);
+            if (bufferFile.exists()) {
+                if (!bufferFile.canWrite()) {
+                    statusLogger.error("We cant write to your bufferDir location: " + bufferFile.getAbsolutePath());
+                    return null;
+                }
+            } else {
+                if (!bufferFile.mkdirs()) {
+                    statusLogger.error("We cant create your bufferDir location: " + bufferFile.getAbsolutePath());
+                    return null;
                 }
             }
+        }
+        else {
+            bufferDirPath = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer";
+        }
+        File bufferDirFile = new File(bufferDirPath, logzioType);
+        return bufferDirFile;
+    }
 
-            String bufferDirPath;
-            if (bufferDir != null) {
-                bufferDirPath = bufferDir;
-                File bufferFile = new File(bufferDirPath);
-                if (bufferFile.exists()) {
-                    if (!bufferFile.canWrite()) {
-                        statusLogger.error("We cant write to your bufferDir location: " + bufferFile.getAbsolutePath());
-                        return;
-                    }
-                } else {
-                    if (!bufferFile.mkdirs()) {
-                        statusLogger.error("We cant create your bufferDir location: " + bufferFile.getAbsolutePath());
-                        return;
-                    }
-                }
-            }
-            else {
-                bufferDirPath = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer";
-            }
-            File bufferDirFile = new File(bufferDirPath, logzioType);
-            tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
-            try {
-                logzioSender = LogzioSender
-                        .builder()
-                        .setDebug(debug)
-                        .setTasksExecutor(tasksExecutor)
-                        .setDrainTimeout(drainTimeoutSec)
-                        .setReporter(new StatusReporter())
-                        .setHttpsRequestConfiguration(conf)
-                        .WithDiskMemoryQueue()
-                          .setBufferDir(bufferDirFile)
-                          .setFsPercentThreshold(fileSystemFullPercentThreshold)
-                          .setGcPersistedQueueFilesIntervalSeconds(gcPersistedQueueFilesIntervalSeconds)
-                        .EndDiskQueue()
-                        .build();
-            } catch (LogzioParameterErrorException e) {
-                statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);
-                return;
-            }
-        }else {
-            if (bufferSizeThreshold <= 0) {
-                if (bufferSizeThreshold != -1) {
-                    statusLogger.error("bufferSizeThreshold should be a non zero integer, or -1");
-                    return;
-                }
-            }
-            tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
-            try {
-                logzioSender = LogzioSender
-                        .builder()
-                        .setDebug(debug)
-                        .setTasksExecutor(tasksExecutor)
-                        .setDrainTimeout(drainTimeoutSec)
-                        .setReporter(new StatusReporter())
-                        .setHttpsRequestConfiguration(conf)
-                        .WithInMemoryLogsBuffer()
-                          .setBufferThreshold(bufferSizeThreshold)
-                        .EndInMemoryLogsBuffer()
-                        .build();
-            } catch (LogzioParameterErrorException e) {
-                statusLogger.error("Some of the configuration parameters of logz.io is wrong: "+e.getMessage(),e);
-                return;
+    private boolean validateFSFullPercentThreshold() {
+        if (!(fileSystemFullPercentThreshold >= 1 && fileSystemFullPercentThreshold <= 100)) {
+            if (fileSystemFullPercentThreshold != -1) {
+                statusLogger.error("fileSystemFullPercentThreshold should be a number between 1 and 100, or -1");
+                return false;
             }
         }
-        logzioSender.start();
-        super.start();
+        return true;
     }
 
     @Override
