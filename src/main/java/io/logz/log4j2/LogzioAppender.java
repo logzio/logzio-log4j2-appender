@@ -344,6 +344,12 @@ public class LogzioAppender extends AbstractAppender {
                 return;
             }
         }else {
+            if (bufferSizeThreshold <= 0) {
+                if (bufferSizeThreshold != -1) {
+                    statusLogger.error("bufferSizeThreshold should be a non zero integer, or -1");
+                    return;
+                }
+            }
             tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             try {
                 logzioSender = LogzioSender
