@@ -35,9 +35,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * @author MarinaRazumovsky
- */
 @Plugin(name = "LogzioAppender", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class LogzioAppender extends AbstractAppender {
 
@@ -82,8 +79,12 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         int fileSystemFullPercentThreshold = 98;
 
+        @Deprecated
         @PluginBuilderAttribute
         String bufferDir;
+
+        @PluginBuilderAttribute
+        String queueDir;
 
         @PluginBuilderAttribute
         int socketTimeoutMs = 10*1000;
@@ -98,7 +99,7 @@ public class LogzioAppender extends AbstractAppender {
         String additionalFields;
 
         @PluginBuilderAttribute
-        boolean debug=false;
+        boolean debug = false;
 
         @PluginBuilderAttribute
         int gcPersistedQueueFilesIntervalSeconds = 30;
@@ -110,17 +111,17 @@ public class LogzioAppender extends AbstractAppender {
         private boolean compressRequests = false;
 
         @PluginBuilderAttribute
-        private boolean inMemoryBuffer = false;
+        private boolean inMemoryQueue = false;
 
         @PluginBuilderAttribute
-        private int bufferSizeThreshold  = 100 * 1024 *1024;
+        private long inMemoryQueueCapacityBytes  = 100 * 1024 *1024;
 
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
-                    drainTimeoutSec, fileSystemFullPercentThreshold, bufferDir, socketTimeoutMs, connectTimeoutMs,
+                    drainTimeoutSec, fileSystemFullPercentThreshold, queueDir == null ? bufferDir : queueDir, socketTimeoutMs, connectTimeoutMs,
                     addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
-                    inMemoryBuffer, bufferSizeThreshold);
+                    inMemoryQueue, inMemoryQueueCapacityBytes);
         }
 
         public Builder setFilter(Filter filter) {
@@ -163,8 +164,19 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
-        public Builder setBufferDir(String bufferDir) {
-            this.bufferDir = bufferDir;
+        /**
+         *
+         * @param queueDir
+         * @deprecated use {@link #setQueueDir(String)}
+         */
+        @Deprecated
+        public Builder setBufferDir(String queueDir) {
+            this.queueDir = queueDir;
+            return this;
+        }
+
+        public Builder setQueueDir(String queueDir) {
+            this.queueDir = queueDir;
             return this;
         }
 
@@ -203,24 +215,26 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
-        public Builder setInMemoryBuffer(boolean inMemoryBuffer) {
-            this.inMemoryBuffer = inMemoryBuffer;
+        public Builder setInMemoryQueue(boolean inMemoryQueue) {
+            this.inMemoryQueue = inMemoryQueue;
             return this;
         }
 
-        public Builder setBufferSizeThreshold(int bufferSizeThreshold) {
-            this.bufferSizeThreshold = bufferSizeThreshold;
+        public Builder setInMemoryQueueCapacityBytes(long inMemoryQueueCapacityBytes) {
+            this.inMemoryQueueCapacityBytes = inMemoryQueueCapacityBytes;
             return this;
         }
 
     }
-
+    private static final int DONT_LIMIT_QUEUE_SPACE = -1;
+    private static final int LOWER_PERCENTAGE_FS_SPACE = 1;
+    private static final int UPPER_PERCENTAGE_FS_SPACE = 100;
     private LogzioSender logzioSender;
     private final String logzioToken;
     private final String logzioType ;
     private final int drainTimeoutSec;
     private final int fileSystemFullPercentThreshold;
-    private final String bufferDir;
+    private final String queueDir;
     private final String logzioUrl;
     private final int connectTimeout;
     private final int socketTimeout;
@@ -228,31 +242,31 @@ public class LogzioAppender extends AbstractAppender {
     private final boolean addHostname;
     private final int gcPersistedQueueFilesIntervalSeconds;
     private final boolean compressRequests;
-    private final boolean inMemoryBuffer;
-    private final int bufferSizeThreshold;
+    private final boolean inMemoryQueue;
+    private final long inMemoryQueueCapacityBytes;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
     private ScheduledExecutorService tasksExecutor;
 
     private LogzioAppender(String name, Filter filter, final boolean ignoreExceptions, String url,
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
-                             String bufferDir, int socketTimeout, int connectTimeout, boolean addHostname,
+                             String queueDir, int socketTimeout, int connectTimeout, boolean addHostname,
                              String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds,
-                           boolean compressRequests, boolean inMemoryBuffer, int bufferSizeThreshold) {
+                           boolean compressRequests, boolean inMemoryQueue, long inMemoryQueueCapacityBytes) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
         this.logzioType = getValueFromSystemEnvironmentIfNeeded(type);
         this.drainTimeoutSec = drainTimeoutSec;
         this.fileSystemFullPercentThreshold = fileSystemFullPercentThreshold;
-        this.bufferDir = bufferDir;
+        this.queueDir = queueDir;
         this.socketTimeout = socketTimeout;
         this.connectTimeout = connectTimeout;
         this.debug = debug;
         this.addHostname = addHostname;
         this.gcPersistedQueueFilesIntervalSeconds = gcPersistedQueueFilesIntervalSeconds;
         this.compressRequests = compressRequests;
-        this.inMemoryBuffer = inMemoryBuffer;
-        this.bufferSizeThreshold = bufferSizeThreshold;
+        this.inMemoryQueue = inMemoryQueue;
+        this.inMemoryQueueCapacityBytes = inMemoryQueueCapacityBytes;
 
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
@@ -274,33 +288,40 @@ public class LogzioAppender extends AbstractAppender {
         HttpsRequestConfiguration conf = getHttpsRequestConfiguration();
         if (conf == null) return;
         setHostname();
-        LogzioSender.Builder logzioSenderBuilder = new LogzioSender.Builder()
+        LogzioSender.Builder logzioSenderBuilder = new LogzioSender
+                .Builder()
                 .setDebug(debug)
                 .setDrainTimeout(drainTimeoutSec)
                 .setReporter(new StatusReporter())
                 .setHttpsRequestConfiguration(conf);
 
-        if (inMemoryBuffer) {
-            if (!validateBufferSizeThreshold()) return;
+        if (inMemoryQueue) {
+            if (!validateQueueCapacity()) return;
             tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSenderBuilder
                     .setTasksExecutor(tasksExecutor)
+                    //.withInMemoryLogsQueue()
                     .WithInMemoryLogsBuffer()
-                    .setBufferThreshold(bufferSizeThreshold)
+                    //.setCapacityInBytes(inMemoryQueueCapacityBytes)
+                    .setBufferThreshold((int) inMemoryQueueCapacityBytes)
+//                    .endInMemoryLogsQueue();
                     .EndInMemoryLogsBuffer();
         }else {
             if (!validateFSFullPercentThreshold()) return;
 
-            File bufferDirFile = getBufferDirFile();
-            if (bufferDirFile == null) return;
+            File queueDirFile = getQueueDirFile();
+            if (queueDirFile == null) return;
 
             tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSenderBuilder
                     .setTasksExecutor(tasksExecutor)
+//                    .withDiskMemoryQueue()
                     .WithDiskMemoryQueue()
-                    .setBufferDir(bufferDirFile)
+//                    .setQueueDir(queueDirFile)
+                    .setBufferDir(queueDirFile)
                     .setFsPercentThreshold(fileSystemFullPercentThreshold)
                     .setGcPersistedQueueFilesIntervalSeconds(gcPersistedQueueFilesIntervalSeconds)
+//                    .endDiskQueue();
                     .EndDiskQueue();
         }
         try {
@@ -341,40 +362,40 @@ public class LogzioAppender extends AbstractAppender {
         }
     }
 
-    private boolean validateBufferSizeThreshold() {
-        if (bufferSizeThreshold <= 0 && bufferSizeThreshold != -1) {
+    private boolean validateQueueCapacity() {
+        if (inMemoryQueueCapacityBytes <= 0 && inMemoryQueueCapacityBytes != DONT_LIMIT_QUEUE_SPACE) {
             statusLogger.error("bufferSizeThreshold should be a non zero integer or -1");
             return false;
         }
         return true;
     }
 
-    private File getBufferDirFile() {
-        String bufferDirPath;
-        if (bufferDir != null) {
-            bufferDirPath = bufferDir;
-            File bufferFile = new File(bufferDirPath);
-            if (bufferFile.exists()) {
-                if (!bufferFile.canWrite()) {
-                    statusLogger.error("We cant write to your bufferDir location: " + bufferFile.getAbsolutePath());
+    private File getQueueDirFile() {
+        String queueDirPath;
+        if (queueDir != null) {
+            queueDirPath = queueDir;
+            File queueFile = new File(queueDirPath);
+            if (queueFile.exists()) {
+                if (!queueFile.canWrite()) {
+                    statusLogger.error("We cant write to your bufferDir location: " + queueFile.getAbsolutePath());
                     return null;
                 }
             } else {
-                if (!bufferFile.mkdirs()) {
-                    statusLogger.error("We cant create your bufferDir location: " + bufferFile.getAbsolutePath());
+                if (!queueFile.mkdirs()) {
+                    statusLogger.error("We cant create your bufferDir location: " + queueFile.getAbsolutePath());
                     return null;
                 }
             }
         }
         else {
-            bufferDirPath = System.getProperty("java.io.tmpdir") + File.separator+"logzio-log4j2-buffer";
+            queueDirPath = System.getProperty("java.io.tmpdir") + File.separator + "logzio-log4j2-buffer";
         }
-        return new File(bufferDirPath, logzioType);
+        return new File(queueDirPath, logzioType);
     }
 
     private boolean validateFSFullPercentThreshold() {
-        if (!(fileSystemFullPercentThreshold >= 1 && fileSystemFullPercentThreshold <= 100)) {
-            if (fileSystemFullPercentThreshold != -1) {
+        if (!(fileSystemFullPercentThreshold >= LOWER_PERCENTAGE_FS_SPACE && fileSystemFullPercentThreshold <= UPPER_PERCENTAGE_FS_SPACE)) {
+            if (fileSystemFullPercentThreshold != DONT_LIMIT_QUEUE_SPACE) {
                 statusLogger.error("fileSystemFullPercentThreshold should be a number between 1 and 100, or -1");
                 return false;
             }

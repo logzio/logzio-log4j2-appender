@@ -26,10 +26,6 @@ import static io.logz.test.MockLogzioBulkListener.LogRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-/**
- * @author MarinaRazumovsky
- */
-
 @RunWith(Parameterized.class)
 public class Log4j2AppenderTest {
 
@@ -52,7 +48,7 @@ public class Log4j2AppenderTest {
     public static Collection<Object[]> logzioSenderBuilders() {
         List<Builder> builders = new ArrayList<>();
         builders.add(new Builder());
-        builders.add(new Builder().setInMemoryBuffer(true));
+        builders.add(new Builder().setInMemoryQueue(true));
 
         Collection<Object[]> result = new ArrayList<>();
         for (Builder builder : builders) {
@@ -74,12 +70,7 @@ public class Log4j2AppenderTest {
         String message1 = "Testing.." + random(5);
         String message2 = "Warning test.." + random(5);
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-
-        Logger testLogger = getLogger(loggerName);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
         testLogger.info(message1);
         testLogger.warn(message2);
 
@@ -98,13 +89,8 @@ public class Log4j2AppenderTest {
         String message1 = "Testing.." + random(5);
         String message2 = "Warning test.." + random(5);
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
         logzioAppenderBuilder.setCompressRequests(true);
-
-        Logger testLogger = getLogger(loggerName);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
         testLogger.info(message1);
         testLogger.warn(message2);
 
@@ -127,13 +113,9 @@ public class Log4j2AppenderTest {
         additionalFields.put("java_home", System.getenv("JAVA_HOME"));
         additionalFields.put("testing", "yes");
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        logzioAppenderBuilder.setAdditionalFields(additionalFieldsString);
 
-        Logger testLogger = getLogger(loggerName);
+        logzioAppenderBuilder.setAdditionalFields(additionalFieldsString);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
         testLogger.info(message1);
 
         sleepSeconds(2 * drainTimeout);
@@ -152,13 +134,9 @@ public class Log4j2AppenderTest {
         int drainTimeout = 1;
         String message1 = "Hostname log - " +  random(5);
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
         logzioAppenderBuilder.setAddHostname(true);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
 
-        Logger testLogger = getLogger(loggerName);
         testLogger.info(message1);
 
         // Sleep double time the drain timeout
@@ -182,11 +160,7 @@ public class Log4j2AppenderTest {
         Throwable exception = null;
         String message1 = "This is not an int..";
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        Logger testLogger = getLogger(loggerName);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
 
         try {
             Integer.parseInt(message1);
@@ -218,11 +192,7 @@ public class Log4j2AppenderTest {
 
         ThreadContext.put(mdcKey,mdcValue);
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        Logger testLogger = getLogger(loggerName);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
 
@@ -245,11 +215,7 @@ public class Log4j2AppenderTest {
         String message1 = "Simple log line - " + random(5);
         Marker marker = MarkerManager.getMarker(markerTestValue);
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        Logger testLogger = getLogger(loggerName);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
 
         testLogger.info(marker, message1);
 
@@ -269,11 +235,7 @@ public class Log4j2AppenderTest {
         int drainTimeout = 1;
         String message1 = "Just a log - " + random(5);
 
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        Logger testLogger = getLogger(loggerName);
+        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
 
@@ -303,7 +265,11 @@ public class Log4j2AppenderTest {
         }
     }
 
-    private Logger getLogger(String loggerName) {
+    private Logger getLogger(String loggerName, String token, String type, int drainTimeout) {
+        logzioAppenderBuilder.setLogzioToken(token);
+        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
+        logzioAppenderBuilder.setLogzioType(type);
+        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
         Logger log4j2Logger =  LogManager.getLogger(loggerName);
         LogzioAppender appender = logzioAppenderBuilder.build();
         appender.start();
