@@ -166,7 +166,7 @@ public class LogzioAppender extends AbstractAppender {
 
         /**
          *
-         * @param queueDir
+         * @param queueDir: queue file path
          * @deprecated use {@link #setQueueDir(String)}
          */
         @Deprecated
@@ -291,7 +291,7 @@ public class LogzioAppender extends AbstractAppender {
         LogzioSender.Builder logzioSenderBuilder = new LogzioSender
                 .Builder()
                 .setDebug(debug)
-                .setDrainTimeout(drainTimeoutSec)
+                .setDrainTimeoutSec(drainTimeoutSec)
                 .setReporter(new StatusReporter())
                 .setHttpsRequestConfiguration(conf);
 
@@ -300,13 +300,10 @@ public class LogzioAppender extends AbstractAppender {
             tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSenderBuilder
                     .setTasksExecutor(tasksExecutor)
-                    //.withInMemoryLogsQueue()
-                    .WithInMemoryLogsBuffer()
-                    //.setCapacityInBytes(inMemoryQueueCapacityBytes)
-                    .setBufferThreshold((int) inMemoryQueueCapacityBytes)
-//                    .endInMemoryLogsQueue();
-                    .EndInMemoryLogsBuffer();
-        }else {
+                    .withInMemoryQueue()
+                        .setCapacityInBytes(inMemoryQueueCapacityBytes)
+                    .endInMemoryQueue();
+        } else {
             if (!validateFSFullPercentThreshold()) return;
 
             File queueDirFile = getQueueDirFile();
@@ -315,14 +312,11 @@ public class LogzioAppender extends AbstractAppender {
             tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSenderBuilder
                     .setTasksExecutor(tasksExecutor)
-//                    .withDiskMemoryQueue()
-                    .WithDiskMemoryQueue()
-//                    .setQueueDir(queueDirFile)
-                    .setBufferDir(queueDirFile)
-                    .setFsPercentThreshold(fileSystemFullPercentThreshold)
-                    .setGcPersistedQueueFilesIntervalSeconds(gcPersistedQueueFilesIntervalSeconds)
-//                    .endDiskQueue();
-                    .EndDiskQueue();
+                    .withDiskQueue()
+                        .setQueueDir(queueDirFile)
+                        .setFsPercentThreshold(fileSystemFullPercentThreshold)
+                        .setGcPersistedQueueFilesIntervalSeconds(gcPersistedQueueFilesIntervalSeconds)
+                    .endDiskQueue();
         }
         try {
             logzioSender = logzioSenderBuilder.build();
