@@ -358,7 +358,7 @@ public class LogzioAppender extends AbstractAppender {
 
     private boolean validateQueueCapacity() {
         if (inMemoryQueueCapacityBytes <= 0 && inMemoryQueueCapacityBytes != DONT_LIMIT_QUEUE_SPACE) {
-            statusLogger.error("bufferSizeThreshold should be a non zero integer or -1");
+            statusLogger.error("inMemoryQueueCapacityBytes should be a non zero integer or -1");
             return false;
         }
         return true;
@@ -371,12 +371,12 @@ public class LogzioAppender extends AbstractAppender {
             File queueFile = new File(queueDirPath);
             if (queueFile.exists()) {
                 if (!queueFile.canWrite()) {
-                    statusLogger.error("We cant write to your bufferDir location: " + queueFile.getAbsolutePath());
+                    statusLogger.error("We cant write to your queueDir location: " + queueFile.getAbsolutePath());
                     return null;
                 }
             } else {
                 if (!queueFile.mkdirs()) {
-                    statusLogger.error("We cant create your bufferDir location: " + queueFile.getAbsolutePath());
+                    statusLogger.error("We cant create your queueDir location: " + queueFile.getAbsolutePath());
                     return null;
                 }
             }
