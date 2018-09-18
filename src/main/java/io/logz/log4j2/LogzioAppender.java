@@ -168,7 +168,6 @@ public class LogzioAppender extends AbstractAppender {
         }
 
         /**
-         *
          * @param queueDir: queue file path
          * @deprecated use {@link #setQueueDir(String)}
          */
