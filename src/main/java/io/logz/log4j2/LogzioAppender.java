@@ -79,6 +79,9 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         int fileSystemFullPercentThreshold = 98;
 
+        /**
+         * @deprecated use {@link #queueDir}
+         */
         @Deprecated
         @PluginBuilderAttribute
         String bufferDir;
@@ -285,8 +288,13 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     public void start() {
-        HttpsRequestConfiguration conf = getHttpsRequestConfiguration();
-        if (conf == null) return;
+        HttpsRequestConfiguration conf;
+        try {
+            conf = getHttpsRequestConfiguration();
+        } catch (LogzioParameterErrorException e) {
+            statusLogger.error("Some of the configuration parameters of logz.io is wrong: " + e.getMessage(), e);
+            return;
+        }
         setHostname();
         LogzioSender.Builder logzioSenderBuilder = new LogzioSender
                 .Builder()
@@ -296,7 +304,9 @@ public class LogzioAppender extends AbstractAppender {
                 .setHttpsRequestConfiguration(conf);
 
         if (inMemoryQueue) {
-            if (!validateQueueCapacity()) return;
+            if (!validateQueueCapacity()) {
+                return;
+            }
             tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSenderBuilder
                     .setTasksExecutor(tasksExecutor)
@@ -304,10 +314,14 @@ public class LogzioAppender extends AbstractAppender {
                         .setCapacityInBytes(inMemoryQueueCapacityBytes)
                     .endInMemoryQueue();
         } else {
-            if (!validateFSFullPercentThreshold()) return;
+            if (!validateFSFullPercentThreshold()) {
+                return;
+            }
 
             File queueDirFile = getQueueDirFile();
-            if (queueDirFile == null) return;
+            if (queueDirFile == null) {
+                return;
+            }
 
             tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
             logzioSenderBuilder
@@ -339,21 +353,16 @@ public class LogzioAppender extends AbstractAppender {
         }
     }
 
-    private HttpsRequestConfiguration getHttpsRequestConfiguration() {
-        try {
-            return HttpsRequestConfiguration
-                    .builder()
-                    .setLogzioListenerUrl(logzioUrl)
-                    .setSocketTimeout(socketTimeout)
-                    .setLogzioType(logzioType)
-                    .setLogzioToken(logzioToken)
-                    .setConnectTimeout(connectTimeout)
-                    .setCompressRequests(compressRequests)
-                    .build();
-        } catch (LogzioParameterErrorException e) {
-            statusLogger.error("Some of the configuration parameters of logz.io is wrong: " + e.getMessage(), e);
-            return null;
-        }
+    private HttpsRequestConfiguration getHttpsRequestConfiguration() throws LogzioParameterErrorException {
+        return HttpsRequestConfiguration
+                .builder()
+                .setLogzioListenerUrl(logzioUrl)
+                .setSocketTimeout(socketTimeout)
+                .setLogzioType(logzioType)
+                .setLogzioToken(logzioToken)
+                .setConnectTimeout(connectTimeout)
+                .setCompressRequests(compressRequests)
+                .build();
     }
 
     private boolean validateQueueCapacity() {
