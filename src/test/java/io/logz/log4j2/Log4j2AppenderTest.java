@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.ThreadContext;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -20,14 +21,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 @RunWith(Parameterized.class)
-public class Log4j2AppenderTest extends BaseLog4jAppenderTest{
+public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
     private LogzioAppender.Builder logzioAppenderBuilder;
     private QueueType queueType;
 
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        setNewLogzioAppenderBuilder();
+    @Before
+    public void setNewLogzioAppenderBuilder() {
+        logzioAppenderBuilder = queueType == QueueType.DISK ?
+                new LogzioAppender.Builder() :
+                new LogzioAppender.Builder().setInMemoryQueue(true);
     }
 
     @Parameterized.Parameters
@@ -227,11 +229,5 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest{
         mockListener.assertNumberOfReceivedMsgs(1);
         LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
         mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
-    }
-
-    private void setNewLogzioAppenderBuilder() {
-        logzioAppenderBuilder = queueType == QueueType.DISK ?
-                new LogzioAppender.Builder() :
-                new LogzioAppender.Builder().setInMemoryQueue(true);
     }
 }

@@ -18,13 +18,13 @@ public abstract class BaseLog4jAppenderTest {
     protected enum QueueType { DISK, MEMORY }
 
     @Before
-    public void setUp() throws Exception {
+    public void startMockListener() throws Exception {
         mockListener = new io.logz.test.MockLogzioBulkListener();
         mockListener.start();
     }
 
     @After
-    public void tearDown() {
+    public void stopMockListener() {
         mockListener.stop();
     }
 
