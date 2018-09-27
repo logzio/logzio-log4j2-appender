@@ -1,15 +1,10 @@
 package io.logz.log4j2;
 
-import io.logz.log4j2.LogzioAppender.Builder;
-import io.logz.test.MockLogzioBulkListener;
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 import org.apache.logging.log4j.ThreadContext;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -18,47 +13,35 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static io.logz.test.MockLogzioBulkListener.LogRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 @RunWith(Parameterized.class)
-public class Log4j2AppenderTest {
-
-    private final static Logger logger = LogManager.getLogger(Log4j2AppenderTest.class);
-    protected MockLogzioBulkListener mockListener;
+public class Log4j2AppenderTest extends BaseLog4jAppenderTest{
     private LogzioAppender.Builder logzioAppenderBuilder;
+    private QueueType queueType;
 
-    @Before
-    public void startMockListener() throws Exception {
-        mockListener = new io.logz.test.MockLogzioBulkListener();
-        mockListener.start();
-    }
-
-    @After
-    public void stopMockListener() {
-        mockListener.stop();
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        setNewLogzioAppenderBuilder();
     }
 
     @Parameterized.Parameters
-    public static Collection<Object[]> logzioSenderBuilders() {
-        List<Builder> builders = new ArrayList<>();
-        builders.add(new Builder());
-        builders.add(new Builder().setInMemoryQueue(true));
-
-        Collection<Object[]> result = new ArrayList<>();
-        for (Builder builder : builders) {
-            result.add(new Object[]{builder});
+    public static Collection<QueueType[]> logzioSenderBuilders() {
+        Collection<QueueType[]> queueTypes = new ArrayList<>();
+        for (QueueType type : QueueType.values()) {
+            queueTypes.add(new QueueType[]{type});
         }
-        return result;
+
+        return queueTypes;
     }
 
-    public Log4j2AppenderTest(LogzioAppender.Builder logzioAppenderBuilder) {
-        this.logzioAppenderBuilder = logzioAppenderBuilder;
+    public Log4j2AppenderTest(QueueType queueType) {
+        this.queueType = queueType;
     }
 
     @Test
@@ -70,7 +53,7 @@ public class Log4j2AppenderTest {
         String message1 = "Testing.." + random(5);
         String message2 = "Warning test.." + random(5);
 
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
         testLogger.info(message1);
         testLogger.warn(message2);
 
@@ -90,7 +73,7 @@ public class Log4j2AppenderTest {
         String message2 = "Warning test.." + random(5);
 
         logzioAppenderBuilder.setCompressRequests(true);
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
         testLogger.info(message1);
         testLogger.warn(message2);
 
@@ -115,7 +98,7 @@ public class Log4j2AppenderTest {
 
 
         logzioAppenderBuilder.setAdditionalFields(additionalFieldsString);
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
         testLogger.info(message1);
 
         sleepSeconds(2 * drainTimeout);
@@ -135,7 +118,7 @@ public class Log4j2AppenderTest {
         String message1 = "Hostname log - " +  random(5);
 
         logzioAppenderBuilder.setAddHostname(true);
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
 
@@ -160,7 +143,7 @@ public class Log4j2AppenderTest {
         Throwable exception = null;
         String message1 = "This is not an int..";
 
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         try {
             Integer.parseInt(message1);
@@ -192,7 +175,7 @@ public class Log4j2AppenderTest {
 
         ThreadContext.put(mdcKey,mdcValue);
 
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
 
@@ -215,7 +198,7 @@ public class Log4j2AppenderTest {
         String message1 = "Simple log line - " + random(5);
         Marker marker = MarkerManager.getMarker(markerTestValue);
 
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(marker, message1);
 
@@ -235,7 +218,7 @@ public class Log4j2AppenderTest {
         int drainTimeout = 1;
         String message1 = "Just a log - " + random(5);
 
-        Logger testLogger = getLogger(loggerName, token, type, drainTimeout);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
 
@@ -246,41 +229,9 @@ public class Log4j2AppenderTest {
         mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
     }
 
-    private void assertAdditionalFields(LogRequest logRequest, Map<String, String> additionalFields) {
-        additionalFields.forEach((field, value) -> {
-            String fieldValueInLog = logRequest.getStringFieldOrNull(field);
-            assertThat(fieldValueInLog)
-                    .describedAs("Field '{}' in Log [{}]", field, logRequest.getJsonObject().toString())
-                    .isNotNull()
-                    .isEqualTo(value);
-        });
+    private void setNewLogzioAppenderBuilder() {
+        logzioAppenderBuilder = queueType == QueueType.DISK ?
+                new LogzioAppender.Builder() :
+                new LogzioAppender.Builder().setInMemoryQueue(true);
     }
-
-    private void sleepSeconds(int seconds) {
-        logger.info("Sleeping {} [sec]...", seconds);
-        try {
-            Thread.sleep(seconds * 1000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Logger getLogger(String loggerName, String token, String type, int drainTimeout) {
-        logzioAppenderBuilder.setLogzioToken(token);
-        logzioAppenderBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
-        logzioAppenderBuilder.setLogzioType(type);
-        logzioAppenderBuilder.setDrainTimeoutSec(drainTimeout);
-        Logger log4j2Logger =  LogManager.getLogger(loggerName);
-        LogzioAppender appender = logzioAppenderBuilder.build();
-        appender.start();
-        assertThat(appender.isStarted()).isTrue();
-        ((org.apache.logging.log4j.core.Logger) log4j2Logger).addAppender(appender);
-        ((org.apache.logging.log4j.core.Logger) log4j2Logger).setAdditive(false);
-
-        return log4j2Logger;
-    }
-
-    private String random(int numberOfChars) {
-            return UUID.randomUUID().toString().substring(0, numberOfChars-1);
-        }
 }

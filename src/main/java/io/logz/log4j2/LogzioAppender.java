@@ -111,13 +111,13 @@ public class LogzioAppender extends AbstractAppender {
         private boolean ignoreExceptions = true;
 
         @PluginBuilderAttribute
-        private boolean compressRequests = false;
+        boolean compressRequests = false;
 
         @PluginBuilderAttribute
-        private boolean inMemoryQueue = false;
+        boolean inMemoryQueue = false;
 
         @PluginBuilderAttribute
-        private long inMemoryQueueCapacityBytes  = 100 * 1024 *1024;
+        long inMemoryQueueCapacityBytes  = 100 * 1024 *1024;
 
         @Override
         public LogzioAppender build() {
