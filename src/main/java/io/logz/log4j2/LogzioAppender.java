@@ -381,6 +381,10 @@ public class LogzioAppender extends AbstractAppender {
             statusLogger.error("inMemoryQueueCapacityBytes should be a non zero integer or -1");
             return false;
         }
+        if (inMemoryLogsCountLimit <= 0 && inMemoryLogsCountLimit != DONT_LIMIT_QUEUE_SPACE) {
+            statusLogger.error("inMemoryLogsCountLimit should be a non zero integer or -1");
+            return false;
+        }
         return true;
     }
 
