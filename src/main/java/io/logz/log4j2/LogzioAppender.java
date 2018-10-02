@@ -1,10 +1,10 @@
 package io.logz.log4j2;
 
 import com.google.common.base.Splitter;
-import com.google.common.base.Throwables;
 import io.logz.sender.HttpsRequestConfiguration;
 import io.logz.sender.LogzioSender;
 import io.logz.sender.SenderStatusReporter;
+import io.logz.sender.com.google.common.base.Throwables;
 import io.logz.sender.com.google.gson.JsonObject;
 import io.logz.sender.exceptions.LogzioParameterErrorException;
 import org.apache.logging.log4j.Logger;
@@ -119,12 +119,15 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         long inMemoryQueueCapacityBytes  = 100 * 1024 *1024;
 
+        @PluginBuilderAttribute
+        long inMemoryLogsCountLimit  = DONT_LIMIT_QUEUE_SPACE;
+
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
                     drainTimeoutSec, fileSystemFullPercentThreshold, queueDir == null ? bufferDir : queueDir, socketTimeoutMs, connectTimeoutMs,
                     addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
-                    inMemoryQueue, inMemoryQueueCapacityBytes);
+                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountLimit);
         }
 
         public Builder setFilter(Filter filter) {
@@ -227,6 +230,11 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
+        public Builder setInMemoryLogsCountLimit(long inMemoryLogsCountLimit) {
+            this.inMemoryLogsCountLimit = inMemoryLogsCountLimit;
+            return this;
+        }
+
     }
     private static final int DONT_LIMIT_QUEUE_SPACE = -1;
     private static final int LOWER_PERCENTAGE_FS_SPACE = 1;
@@ -246,6 +254,7 @@ public class LogzioAppender extends AbstractAppender {
     private final boolean compressRequests;
     private final boolean inMemoryQueue;
     private final long inMemoryQueueCapacityBytes;
+    private final long inMemoryLogsCountLimit;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
     private ScheduledExecutorService tasksExecutor;
 
@@ -253,7 +262,8 @@ public class LogzioAppender extends AbstractAppender {
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
                              String queueDir, int socketTimeout, int connectTimeout, boolean addHostname,
                              String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds,
-                           boolean compressRequests, boolean inMemoryQueue, long inMemoryQueueCapacityBytes) {
+                           boolean compressRequests, boolean inMemoryQueue,
+                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountLimit) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -269,6 +279,7 @@ public class LogzioAppender extends AbstractAppender {
         this.compressRequests = compressRequests;
         this.inMemoryQueue = inMemoryQueue;
         this.inMemoryQueueCapacityBytes = inMemoryQueueCapacityBytes;
+        this.inMemoryLogsCountLimit = inMemoryLogsCountLimit;
 
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
@@ -311,6 +322,7 @@ public class LogzioAppender extends AbstractAppender {
                     .setTasksExecutor(tasksExecutor)
                     .withInMemoryQueue()
                         .setCapacityInBytes(inMemoryQueueCapacityBytes)
+                        .setLogsCountLimit(inMemoryLogsCountLimit)
                     .endInMemoryQueue();
         } else {
             if (!validateFSFullPercentThreshold()) {

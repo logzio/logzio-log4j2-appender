@@ -35,4 +35,24 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         mockListener.assertNumberOfReceivedMsgs(1);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
+
+    @Test
+    public void validateQueueLogsCountLimit() {
+        String token = "verifyQueueLogsCountLimit";
+        String type = random(8);
+        String loggerName = "verifyQueueLogsCountLimit" + random(8);
+        int drainTimeout = 1;
+        String message1 = "Testing.." + random(5);
+        String message2 = "Don't get here test! " + random(5);
+
+        logzioAppenderBuilder.setInMemoryLogsCountLimit(1);
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+
+        testLogger.info(message1);
+        testLogger.warn(message2);
+
+        sleepSeconds(drainTimeout * 2);
+        mockListener.assertNumberOfReceivedMsgs(1);
+        mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
+    }
 }
