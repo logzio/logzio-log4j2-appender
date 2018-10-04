@@ -27,13 +27,13 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
 
     @Before
     public void setNewLogzioAppenderBuilder() {
-        logzioAppenderBuilder = queueType == QueueType.DISK ?
-                new LogzioAppender.Builder() :
-                new LogzioAppender.Builder().setInMemoryQueue(true);
+        logzioAppenderBuilder = queueType == QueueType.DISK
+                ? new LogzioAppender.Builder()
+                : new LogzioAppender.Builder().setInMemoryQueue(true);
     }
 
     @Parameterized.Parameters
-    public static Collection<QueueType[]> logzioSenderBuilders() {
+    public static Collection<QueueType[]> logzioSenderQueueTypes() {
         Collection<QueueType[]> queueTypes = new ArrayList<>();
         for (QueueType type : QueueType.values()) {
             queueTypes.add(new QueueType[]{type});
