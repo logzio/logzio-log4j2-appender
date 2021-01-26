@@ -1,18 +1,12 @@
 package io.logz.log4j2;
 
-import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
+import com.google.common.base.Splitter;
+import io.logz.sender.HttpsRequestConfiguration;
+import io.logz.sender.LogzioSender;
+import io.logz.sender.SenderStatusReporter;
+import io.logz.sender.com.google.common.base.Throwables;
+import io.logz.sender.com.google.gson.JsonObject;
+import io.logz.sender.exceptions.LogzioParameterErrorException;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.Appender;
@@ -28,14 +22,18 @@ import org.apache.logging.log4j.core.util.Log4jThreadFactory;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 
-import com.google.common.base.Splitter;
-import com.google.common.base.Supplier;
-import io.logz.sender.HttpsRequestConfiguration;
-import io.logz.sender.LogzioSender;
-import io.logz.sender.SenderStatusReporter;
-import io.logz.sender.com.google.common.base.Throwables;
-import io.logz.sender.com.google.gson.JsonObject;
-import io.logz.sender.exceptions.LogzioParameterErrorException;
+import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Plugin(name = "LogzioAppender", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class LogzioAppender extends AbstractAppender {
