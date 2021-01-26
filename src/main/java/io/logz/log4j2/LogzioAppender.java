@@ -1,12 +1,18 @@
 package io.logz.log4j2;
 
-import com.google.common.base.Splitter;
-import io.logz.sender.HttpsRequestConfiguration;
-import io.logz.sender.LogzioSender;
-import io.logz.sender.SenderStatusReporter;
-import io.logz.sender.com.google.common.base.Throwables;
-import io.logz.sender.com.google.gson.JsonObject;
-import io.logz.sender.exceptions.LogzioParameterErrorException;
+import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.Appender;
@@ -22,18 +28,14 @@ import org.apache.logging.log4j.core.util.Log4jThreadFactory;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 
-import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import com.google.common.base.Splitter;
+import com.google.common.base.Supplier;
+import io.logz.sender.HttpsRequestConfiguration;
+import io.logz.sender.LogzioSender;
+import io.logz.sender.SenderStatusReporter;
+import io.logz.sender.com.google.common.base.Throwables;
+import io.logz.sender.com.google.gson.JsonObject;
+import io.logz.sender.exceptions.LogzioParameterErrorException;
 
 @Plugin(name = "LogzioAppender", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class LogzioAppender extends AbstractAppender {
@@ -256,7 +258,10 @@ public class LogzioAppender extends AbstractAppender {
     private final long inMemoryQueueCapacityBytes;
     private final long inMemoryLogsCountCapacity;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
-    private ScheduledExecutorService tasksExecutor;
+
+    // need to keep static instances of ScheduledExecutorService per LogzioAppender as
+    // the LogzioSender.Builder keep static instances per the given executor
+    private static Map<LogzioAppender, ScheduledExecutorService> tasksExecutors = new HashMap<>();
 
     private LogzioAppender(String name, Filter filter, final boolean ignoreExceptions, String url,
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
@@ -298,6 +303,10 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     public void start() {
+        if (logzioSender != null) {
+            logzioSender.stop();
+        }
+
         HttpsRequestConfiguration conf;
         try {
             conf = getHttpsRequestConfiguration();
@@ -317,9 +326,12 @@ public class LogzioAppender extends AbstractAppender {
             if (!validateQueueCapacity()) {
                 return;
             }
-            tasksExecutor = Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
+
+            final ScheduledExecutorService _tasksExecutor = safeExecutorCreate(() ->
+                    Executors.newScheduledThreadPool(1, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName())));
+
             logzioSenderBuilder
-                    .setTasksExecutor(tasksExecutor)
+                    .setTasksExecutor(_tasksExecutor)
                     .withInMemoryQueue()
                         .setCapacityInBytes(inMemoryQueueCapacityBytes)
                         .setLogsCountLimit(inMemoryLogsCountCapacity)
@@ -334,9 +346,11 @@ public class LogzioAppender extends AbstractAppender {
                 return;
             }
 
-            tasksExecutor = Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName()));
+            final ScheduledExecutorService _tasksExecutor = safeExecutorCreate(() ->
+                    Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName())));
+
             logzioSenderBuilder
-                    .setTasksExecutor(tasksExecutor)
+                    .setTasksExecutor(_tasksExecutor)
                     .withDiskQueue()
                         .setQueueDir(queueDirFile)
                         .setFsPercentThreshold(fileSystemFullPercentThreshold)
@@ -424,13 +438,19 @@ public class LogzioAppender extends AbstractAppender {
     @Override
     public boolean stop(final long timeout, final TimeUnit timeUnit) {
         setStopping();
+
         boolean stopped = super.stop(timeout, timeUnit, false);
-        if (logzioSender != null) logzioSender.stop();
-        if ( tasksExecutor != null ) tasksExecutor.shutdownNow();
+
+        if (logzioSender != null) {
+            logzioSender.stop();
+        }
+
+        safeExecutorTerminate();
+
         setStopped();
+
         return stopped;
     }
-
 
     @Override
     public void append(LogEvent logEvent) {
@@ -439,6 +459,27 @@ public class LogzioAppender extends AbstractAppender {
         }
     }
 
+    private ScheduledExecutorService safeExecutorCreate(Supplier<ScheduledExecutorService> doCreate) {
+        ScheduledExecutorService tasksExecutor;
+        synchronized (tasksExecutors) {
+            tasksExecutors.forEach((inst, executor) -> executor.shutdownNow());
+            tasksExecutors.clear();
+
+            tasksExecutor = doCreate.get();
+            tasksExecutors.put(this, tasksExecutor);
+        }
+
+        return tasksExecutor;
+    }
+
+    private void safeExecutorTerminate() {
+        synchronized (tasksExecutors) {
+            ScheduledExecutorService tasksExecutor = tasksExecutors.remove(this);
+            if (tasksExecutor != null) {
+                tasksExecutor.shutdownNow();
+            }
+        }
+    }
 
     private JsonObject formatMessageAsJson(LogEvent loggingEvent) {
         JsonObject logMessage = new JsonObject();
@@ -478,7 +519,6 @@ public class LogzioAppender extends AbstractAppender {
         }
         return value;
     }
-
 
     private class StatusReporter implements SenderStatusReporter {
 
