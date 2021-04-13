@@ -1,12 +1,19 @@
 package io.logz.log4j2;
 
-import com.google.common.base.Splitter;
-import io.logz.sender.HttpsRequestConfiguration;
-import io.logz.sender.LogzioSender;
-import io.logz.sender.SenderStatusReporter;
-import io.logz.sender.com.google.common.base.Throwables;
-import io.logz.sender.com.google.gson.JsonObject;
-import io.logz.sender.exceptions.LogzioParameterErrorException;
+import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.Appender;
@@ -22,19 +29,13 @@ import org.apache.logging.log4j.core.util.Log4jThreadFactory;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 
-import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import com.google.common.base.Splitter;
+import io.logz.sender.HttpsRequestConfiguration;
+import io.logz.sender.LogzioSender;
+import io.logz.sender.SenderStatusReporter;
+import io.logz.sender.com.google.common.base.Throwables;
+import io.logz.sender.com.google.gson.JsonObject;
+import io.logz.sender.exceptions.LogzioParameterErrorException;
 
 @Plugin(name = "LogzioAppender", category = "Core", elementType = Appender.ELEMENT_TYPE, printObject = true)
 public class LogzioAppender extends AbstractAppender {
@@ -262,6 +263,8 @@ public class LogzioAppender extends AbstractAppender {
     // the LogzioSender.Builder keep static instances per the given token and type
     private static final Map<String, ScheduledExecutorService> tasksExecutors = new HashMap<>();
 
+    private static final Map<LogzioAppender, LogzioSender> appenderToLogzioSender = new HashMap<>();
+
     private LogzioAppender(String name, Filter filter, final boolean ignoreExceptions, String url,
                              String token, String type, int drainTimeoutSec, int fileSystemFullPercentThreshold,
                              String queueDir, int socketTimeout, int connectTimeout, boolean addHostname,
@@ -302,9 +305,7 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     public void start() {
-        if (logzioSender != null) {
-            logzioSender.stop();
-        }
+        safeStopLogzioSender();
 
         HttpsRequestConfiguration conf;
         try {
@@ -362,7 +363,13 @@ public class LogzioAppender extends AbstractAppender {
             statusLogger.error("Couldn't build logzio sender: " + e.getMessage(), e);
             return;
         }
+
+        synchronized (appenderToLogzioSender) {
+            appenderToLogzioSender.put(this, logzioSender);
+        }
+
         logzioSender.start();
+
         super.start();
     }
 
@@ -440,15 +447,36 @@ public class LogzioAppender extends AbstractAppender {
 
         boolean stopped = super.stop(timeout, timeUnit, false);
 
-        if (logzioSender != null) {
-            logzioSender.stop();
-        }
-
-        safeExecutorTerminate();
+        safeStopLogzioSender();
 
         setStopped();
 
         return stopped;
+    }
+
+    private void safeStopLogzioSender() {
+        if (logzioSender == null) {
+            return;
+        }
+
+        boolean doStop = false;
+        synchronized (appenderToLogzioSender) {
+            appenderToLogzioSender.remove(this);
+
+            if (!appenderToLogzioSender.containsValue(logzioSender)) {
+                doStop = true;
+            }
+        }
+
+        if (doStop) {
+            statusLogger.info("Stop {}", logzioSender);
+
+            logzioSender.stop();
+
+            safeExecutorTerminate();
+        } else {
+            statusLogger.info("Stop skipped for reused {}", logzioSender);
+        }
     }
 
     @Override
