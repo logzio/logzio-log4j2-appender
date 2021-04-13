@@ -466,6 +466,9 @@ public class LogzioAppender extends AbstractAppender {
 
             safeExecutorTerminate(key);
 
+            statusLogger.info("Created new tasksExecutor: {} for key.length: {}",
+                    tasksExecutor, key.length());
+
             tasksExecutors.put(key, tasksExecutor);
         }
 
@@ -482,7 +485,20 @@ public class LogzioAppender extends AbstractAppender {
         final ScheduledExecutorService tasksExecutor = tasksExecutors.remove(key);
 
         if (tasksExecutor != null) {
-            tasksExecutor.shutdownNow();
+            statusLogger.info("Terminating old tasksExecutor: {} for key.length: {}",
+                    tasksExecutor, key.length());
+
+            try {
+                tasksExecutor.shutdownNow();
+
+                while (!tasksExecutor.isTerminated()) {
+                    Thread.sleep(500);
+                }
+            } catch (Exception e) {
+                statusLogger.error("Failed to stop old executor", e);
+            }
+        } else {
+            statusLogger.info("Skip terminating no tasksExecutor for key.length: {}", key.length());
         }
     }
 
