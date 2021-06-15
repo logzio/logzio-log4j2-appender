@@ -9,7 +9,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
