@@ -14,7 +14,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import org.apache.log4j.BasicConfigurator;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.Appender;
@@ -307,7 +306,6 @@ public class LogzioAppender extends AbstractAppender {
 
     public void start() {
         safeStopLogzioSender();
-        BasicConfigurator.configure();
         HttpsRequestConfiguration conf;
         try {
             conf = getHttpsRequestConfiguration();
