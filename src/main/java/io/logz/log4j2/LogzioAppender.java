@@ -344,7 +344,6 @@ public class LogzioAppender extends AbstractAppender {
             if (queueDirFile == null) {
                 return;
             }
-
             final ScheduledExecutorService tasksExecutor = safeExecutorCreate(() ->
                     Executors.newScheduledThreadPool(3, Log4jThreadFactory.createDaemonThreadFactory(this.getClass().getSimpleName())));
 

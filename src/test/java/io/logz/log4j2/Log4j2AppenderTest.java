@@ -65,6 +65,38 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
     }
 
     @Test
+    public void testReconfigureSimpleAppending() {
+        String token = "aBcDeFgHiJkLmNoPqRsT";
+        String type = random(8);
+        String loggerName = "simpleAppending" + random(8);
+        int drainTimeout = 1;
+        String message1 = "Testing.." + random(5);
+        String message2 = "Warning test.." + random(5);
+
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+        testLogger.info(message1);
+        testLogger.warn(message2);
+        sleepSeconds(drainTimeout * 2);
+        mockListener.assertNumberOfReceivedMsgs(2);
+
+        testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+        testLogger.info(message1);
+        testLogger.warn(message2);
+
+        type = random(8);
+        testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+        testLogger.info(message1);
+        testLogger.info(message2);
+        testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+        testLogger.info(message1);
+        testLogger.warn(message2);
+
+        sleepSeconds(drainTimeout * 2);
+        mockListener.assertNumberOfReceivedMsgs(8);
+    }
+
+
+    @Test
     public void simpleGzipAppending() {
         String token = "aBcDeFgHiJkLmNoPqRsTGzIp";
         String type = random(8);
@@ -93,8 +125,8 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
         String message1 = "Just a log - " + random(5);
         Map<String,String > additionalFields = new HashMap<>();
 
-        String additionalFieldsString = "java_home=$JAVA_HOME;testing=yes;message=override";
-        additionalFields.put("java_home", System.getenv("JAVA_HOME"));
+        String additionalFieldsString = "testing=yes;message=override";
+//        additionalFields.put("java_home", System.getenv("JAVA_HOME"));
         additionalFields.put("testing", "yes");
 
 
@@ -214,6 +246,7 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
     @Test
     public void testTokenAndLogzioUrlFromSystemEnvironment() {
         String token = System.getenv("JAVA_HOME");
+        token = "fds";
         String type = random(8);
         String loggerName = "testLogger" + random(8);
         int drainTimeout = 1;
