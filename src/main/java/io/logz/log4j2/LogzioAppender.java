@@ -124,12 +124,15 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         long inMemoryLogsCountCapacity  = DONT_LIMIT_CAPACITY;
 
+        @PluginBuilderAttribute
+        String disabled = "false";
+
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
                     drainTimeoutSec, fileSystemFullPercentThreshold, queueDir == null ? bufferDir : queueDir, socketTimeoutMs, connectTimeoutMs,
                     addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
-                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity);
+                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity, disabled);
         }
 
         public Builder setFilter(Filter filter) {
@@ -237,6 +240,11 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
+        public Builder setDisabled(boolean disabled) {
+            this.disabled = String.valueOf(disabled);
+            return this;
+        }
+
     }
     private static final int DONT_LIMIT_CAPACITY = -1;
     private static final int LOWER_PERCENTAGE_FS_SPACE = 1;
@@ -258,6 +266,7 @@ public class LogzioAppender extends AbstractAppender {
     private final long inMemoryQueueCapacityBytes;
     private final long inMemoryLogsCountCapacity;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
+    private final boolean disabled;
 
     // need to keep static instances of ScheduledExecutorService per LogzioAppender as
     // the LogzioSender.Builder keep static instances per the given token and type
@@ -270,7 +279,7 @@ public class LogzioAppender extends AbstractAppender {
                            String queueDir, int socketTimeout, int connectTimeout, boolean addHostname,
                            String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds,
                            boolean compressRequests, boolean inMemoryQueue,
-                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountCapacity) {
+                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountCapacity, String disabled) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -302,9 +311,14 @@ public class LogzioAppender extends AbstractAppender {
             });
             statusLogger.info("The additional fields that would be added: " + additionalFieldsMap.toString());
         }
+
+        this.disabled = disabled != null && ( disabled.equalsIgnoreCase( "true" ));
     }
 
     public void start() {
+        if (disabled) {
+            return;
+        }
         safeStopLogzioSender();
         HttpsRequestConfiguration conf;
         try {
@@ -441,6 +455,10 @@ public class LogzioAppender extends AbstractAppender {
 
     @Override
     public boolean stop(final long timeout, final TimeUnit timeUnit) {
+        if (disabled) {
+            return true;
+        }
+
         setStopping();
 
         boolean stopped = super.stop(timeout, timeUnit, false);
@@ -479,6 +497,10 @@ public class LogzioAppender extends AbstractAppender {
 
     @Override
     public void append(LogEvent logEvent) {
+        if (disabled) {
+            return;
+        }
+
         if (!logEvent.getLoggerName().contains("io.logz.sender")) {
             logzioSender.send(formatMessageAsJson(logEvent));
         }

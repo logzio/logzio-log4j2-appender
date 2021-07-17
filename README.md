@@ -47,6 +47,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
 | **additionalFields**       | *None*                                    | Optional. Allows to add additional fields to the JSON message sent. The format is "fieldName1=fieldValue1;fieldName2=fieldValue2". You can optionally inject an environment variable value using the following format: "fieldName1=fieldValue1;fieldName2=$ENV_VAR_NAME". In that case, the environment variable should be the only value. In case the environment variable can't be resolved, the field will be omitted. |
 | **debug**       | *false*                                    | Print some debug messages to stdout to help to diagnose issues |
 | **compressRequests**       | *false*                                    | Boolean. `true` if logs are compressed in gzip format before sending. `false` if logs are sent uncompressed. |
+| **dissabled**       | *false*                                    | Optional. Boolean. `true` if this plugin should be disabled. `false` if the plugin should be enabled to send logs. |
 
 #### Parameters for in-memory queue
 | Parameter          | Default                              | Explained  |

@@ -1,6 +1,7 @@
 package io.logz.log4j2;
 
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
@@ -261,5 +262,31 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
         mockListener.assertNumberOfReceivedMsgs(1);
         LogRequest logRequest = mockListener.assertLogReceivedByMessage(message1);
         mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
+    }
+
+    @Test
+    public void testDisabled() {
+        String token = "fds";
+        String type = random(8);
+        String loggerName = "testLogger" + random(8);
+        int drainTimeout = 1;
+        String message1 = "Just a log - " + random(5);
+
+        LogzioAppender.Builder testBuilder = logzioAppenderBuilder;
+        testBuilder = testBuilder.setDisabled( true );
+        testBuilder.setLogzioToken(token);
+        testBuilder.setLogzioUrl("http://" + mockListener.getHost() + ":" + mockListener.getPort());
+        testBuilder.setLogzioType(type);
+        testBuilder.setDrainTimeoutSec(drainTimeout);
+        Logger testLogger =  LogManager.getLogger(loggerName);
+        LogzioAppender appender = testBuilder.build();
+        appender.start();
+        ((org.apache.logging.log4j.core.Logger) testLogger).addAppender(appender);
+
+        testLogger.info(message1);
+
+        sleepSeconds(2 * drainTimeout);
+
+        mockListener.assertNumberOfReceivedMsgs(0);
     }
 }
