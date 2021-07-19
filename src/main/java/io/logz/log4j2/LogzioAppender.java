@@ -311,8 +311,8 @@ public class LogzioAppender extends AbstractAppender {
             });
             statusLogger.info("The additional fields that would be added: " + additionalFieldsMap.toString());
         }
-
-        this.disabled = disabled != null && ( disabled.equalsIgnoreCase( "true" ));
+        disabled = getValueFromSystemEnvironmentIfNeeded( disabled );
+        this.disabled = disabled != null && ( disabled.trim().equalsIgnoreCase( "true" ));
     }
 
     public void start() {
