@@ -1,13 +1,13 @@
-name: Build on PRs with gradle
+name: Test with mvn
 on:
   pull_request:
     branches: [ master ]
 jobs:
-  gradle:
+  test:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        java: [ '8', '11', '13', '15' ]
+        java: [ '8', '11', '15' ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
