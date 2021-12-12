@@ -13,7 +13,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.12</version>
+        <version>1.0.13</version>
     </dependency>
 ```
 
