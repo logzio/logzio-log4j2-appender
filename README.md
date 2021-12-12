@@ -1,7 +1,7 @@
 # Logzio Log4j 2 Appender 
 Log4j 2 Appender that ships logs using HTTPS bulk
-[![Build Status](https://travis-ci.org/logzio/logzio-log4j2-appender.svg?branch=master)](https://travis-ci.org/logzio/logzio-log4j2-appender)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.logz.log4j2/logzio-log4j2-appender/badge.svg)](http://mvnrepository.com/artifact/io.logz.log4j2/logzio-log4j2-appender)
+<!-- [![Build Status](https://travis-ci.org/logzio/logzio-log4j2-appender.svg?branch=master)](https://travis-ci.org/logzio/logzio-log4j2-appender)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.logz.log4j2/logzio-log4j2-appender/badge.svg)](http://mvnrepository.com/artifact/io.logz.log4j2/logzio-log4j2-appender) -->
 
 This appender sends logs to your [Logz.io](http://logz.io) account, using non-blocking threading, bulks, and HTTPS encryption. Please note that this appender requires log4j version 2.7 and up, and java 8 and up.
 
@@ -13,7 +13,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.13</version>
+        <version>1.0.14</version>
     </dependency>
 ```
 
