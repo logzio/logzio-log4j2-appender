@@ -137,6 +137,11 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 1.0.14
+   - Bump versions of `log4j-api` and `log4j-core`
+ - 1.0.13
+   - Fix for issue #38, thanks to @idachev
+   - Bump versions of `log4j` and `guava`
  - 1.0.11
    - add in memory queue option
    - change bufferDir(deprecated) to queueDir
