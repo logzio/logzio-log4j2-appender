@@ -1,0 +1,9 @@
+<settings>
+  <servers>
+    <server>
+      <id>github-aos-libs</id>
+      <username>${env.GITHUB_USER}</username>
+      <password>${env.GITHUB_TOKEN}</password>
+    </server>
+  </servers>
+</settings>

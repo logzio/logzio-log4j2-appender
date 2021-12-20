@@ -1,0 +1,19 @@
+version: 0.2
+
+env:
+  variables:
+    CACHE_CONTROL: "86400"
+phases:
+  install:
+    runtime-versions:
+      java: corretto11
+  build:
+    commands:
+      - echo Build started on `date`
+      - mvn -s aws/settings.xml clean install deploy
+  post_build:
+    commands:
+      - echo Build completed on `date`
+cache:
+  paths:
+    - '/root/.m2/**/*'
