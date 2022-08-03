@@ -16,6 +16,14 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
         <version>1.0.16</version>
     </dependency>
 ```
+The appender also requires a logger implementation, for example:
+```xml
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+        <version>2.15.0</version>
+    </dependency>
+```
 
 ### Log4 2 Example Configuration
 ```xml
