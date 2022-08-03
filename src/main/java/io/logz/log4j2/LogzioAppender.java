@@ -132,7 +132,7 @@ public class LogzioAppender extends AbstractAppender {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
                     drainTimeoutSec, fileSystemFullPercentThreshold, queueDir == null ? bufferDir : queueDir, socketTimeoutMs, connectTimeoutMs,
                     addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
-                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity,exceedMaxSizeAction);
+                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity, exceedMaxSizeAction);
         }
 
         public Builder setFilter(Filter filter) {
@@ -266,7 +266,7 @@ public class LogzioAppender extends AbstractAppender {
     private final boolean inMemoryQueue;
     private final long inMemoryQueueCapacityBytes;
     private final long inMemoryLogsCountCapacity;
-    private final String exceedMaxSizeAction;
+    private String exceedMaxSizeAction;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
 
     // need to keep static instances of ScheduledExecutorService per LogzioAppender as
@@ -299,6 +299,7 @@ public class LogzioAppender extends AbstractAppender {
         this.inMemoryLogsCountCapacity = inMemoryLogsCountCapacity;
         this.exceedMaxSizeAction = exceedMaxSizeAction;
 
+        verifyExceedMaxSizeAction(exceedMaxSizeAction);
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
                 if (reservedFields.contains(k)) {
@@ -311,6 +312,14 @@ public class LogzioAppender extends AbstractAppender {
                 }
             });
             statusLogger.info("The additional fields that would be added: " + additionalFieldsMap.toString());
+        }
+    }
+
+
+    private void verifyExceedMaxSizeAction(String exceedMaxSizeAction) {
+        if (!Arrays.asList("cut", "drop").contains(exceedMaxSizeAction.toLowerCase())) {
+            statusLogger.warn("Invalid value for parameter exceedMaxSizeAction, using default: cut");
+            this.exceedMaxSizeAction = "cut";
         }
     }
 
