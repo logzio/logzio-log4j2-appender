@@ -48,7 +48,7 @@ public class LogzioAppender extends AbstractAppender {
     private static final String THREAD = "thread";
     private static final String EXCEPTION = "exception";
 
-    private static final Set<String> reservedFields =  new HashSet<>(Arrays.asList(TIMESTAMP,LOGLEVEL, MARKER, MESSAGE,LOGGER,THREAD,EXCEPTION));
+    private static final Set<String> reservedFields = new HashSet<>(Arrays.asList(TIMESTAMP, LOGLEVEL, MARKER, MESSAGE, LOGGER, THREAD, EXCEPTION));
 
     private static Logger statusLogger = StatusLogger.getLogger();
 
@@ -92,10 +92,10 @@ public class LogzioAppender extends AbstractAppender {
         String queueDir;
 
         @PluginBuilderAttribute
-        int socketTimeoutMs = 10*1000;
+        int socketTimeoutMs = 10 * 1000;
 
         @PluginBuilderAttribute
-        int connectTimeoutMs = 10*1000;
+        int connectTimeoutMs = 10 * 1000;
 
         @PluginBuilderAttribute
         boolean addHostname = false;
@@ -119,17 +119,20 @@ public class LogzioAppender extends AbstractAppender {
         boolean inMemoryQueue = false;
 
         @PluginBuilderAttribute
-        long inMemoryQueueCapacityBytes  = 100 * 1024 *1024;
+        long inMemoryQueueCapacityBytes = 100 * 1024 * 1024;
 
         @PluginBuilderAttribute
-        long inMemoryLogsCountCapacity  = DONT_LIMIT_CAPACITY;
+        long inMemoryLogsCountCapacity = DONT_LIMIT_CAPACITY;
+
+        @PluginBuilderAttribute
+        String exceedMaxSizeAction = "cut";
 
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
                     drainTimeoutSec, fileSystemFullPercentThreshold, queueDir == null ? bufferDir : queueDir, socketTimeoutMs, connectTimeoutMs,
                     addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
-                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity);
+                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity, exceedMaxSizeAction);
         }
 
         public Builder setFilter(Filter filter) {
@@ -237,13 +240,19 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
+        public Builder setExceedMaxSizeAction(String exceedMaxSizeAction) {
+            this.exceedMaxSizeAction = exceedMaxSizeAction;
+            return this;
+        }
+
     }
+
     private static final int DONT_LIMIT_CAPACITY = -1;
     private static final int LOWER_PERCENTAGE_FS_SPACE = 1;
     private static final int UPPER_PERCENTAGE_FS_SPACE = 100;
     private LogzioSender logzioSender;
     private final String logzioToken;
-    private final String logzioType ;
+    private final String logzioType;
     private final int drainTimeoutSec;
     private final int fileSystemFullPercentThreshold;
     private final String queueDir;
@@ -257,6 +266,7 @@ public class LogzioAppender extends AbstractAppender {
     private final boolean inMemoryQueue;
     private final long inMemoryQueueCapacityBytes;
     private final long inMemoryLogsCountCapacity;
+    private String exceedMaxSizeAction;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
 
     // need to keep static instances of ScheduledExecutorService per LogzioAppender as
@@ -270,7 +280,7 @@ public class LogzioAppender extends AbstractAppender {
                            String queueDir, int socketTimeout, int connectTimeout, boolean addHostname,
                            String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds,
                            boolean compressRequests, boolean inMemoryQueue,
-                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountCapacity) {
+                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountCapacity, String exceedMaxSizeAction) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -287,13 +297,14 @@ public class LogzioAppender extends AbstractAppender {
         this.inMemoryQueue = inMemoryQueue;
         this.inMemoryQueueCapacityBytes = inMemoryQueueCapacityBytes;
         this.inMemoryLogsCountCapacity = inMemoryLogsCountCapacity;
+        this.exceedMaxSizeAction = exceedMaxSizeAction;
 
+        verifyExceedMaxSizeAction(exceedMaxSizeAction);
         if (additionalFields != null) {
             Splitter.on(';').omitEmptyStrings().withKeyValueSeparator('=').split(additionalFields).forEach((k, v) -> {
                 if (reservedFields.contains(k)) {
                     statusLogger.warn("The field name '" + k + "' defined in additionalFields configuration can't be used since it's a reserved field name. This field will not be added to the outgoing log messages");
-                }
-                else {
+                } else {
                     String value = getValueFromSystemEnvironmentIfNeeded(v);
                     if (value != null) {
                         additionalFieldsMap.put(k, value);
@@ -301,6 +312,14 @@ public class LogzioAppender extends AbstractAppender {
                 }
             });
             statusLogger.info("The additional fields that would be added: " + additionalFieldsMap.toString());
+        }
+    }
+
+
+    private void verifyExceedMaxSizeAction(String exceedMaxSizeAction) {
+        if (!Arrays.asList("cut", "drop").contains(exceedMaxSizeAction.toLowerCase())) {
+            statusLogger.warn("Invalid value for parameter exceedMaxSizeAction, using default: cut");
+            this.exceedMaxSizeAction = "cut";
         }
     }
 
@@ -319,7 +338,8 @@ public class LogzioAppender extends AbstractAppender {
                 .setDebug(debug)
                 .setDrainTimeoutSec(drainTimeoutSec)
                 .setReporter(new StatusReporter())
-                .setHttpsRequestConfiguration(conf);
+                .setHttpsRequestConfiguration(conf)
+                .setExceedMaxSizeAction(exceedMaxSizeAction);
 
         if (inMemoryQueue) {
             if (!validateQueueCapacity()) {
@@ -422,8 +442,7 @@ public class LogzioAppender extends AbstractAppender {
                     return null;
                 }
             }
-        }
-        else {
+        } else {
             queueDirPath = System.getProperty("java.io.tmpdir") + File.separator + "logzio-log4j2-buffer";
         }
         return new File(queueDirPath, logzioType);
@@ -485,7 +504,7 @@ public class LogzioAppender extends AbstractAppender {
     }
 
     private ScheduledExecutorService safeExecutorCreate(Supplier<ScheduledExecutorService> doCreate) {
-        final ScheduledExecutorService tasksExecutor  = doCreate.get();
+        final ScheduledExecutorService tasksExecutor = doCreate.get();
 
         synchronized (tasksExecutors) {
             final String key = getExecutorKey();
@@ -536,7 +555,7 @@ public class LogzioAppender extends AbstractAppender {
         JsonObject logMessage = new JsonObject();
 
         // Adding MDC first, as I dont want it to collide with any one of the following fields
-        ReadOnlyStringMap mdcProperties =loggingEvent.getContextData();
+        ReadOnlyStringMap mdcProperties = loggingEvent.getContextData();
         if (mdcProperties != null) {
             mdcProperties.toMap().forEach(logMessage::addProperty);
         }
@@ -580,7 +599,7 @@ public class LogzioAppender extends AbstractAppender {
 
         @Override
         public void error(String msg, Throwable e) {
-            statusLogger.error(msg,e);
+            statusLogger.error(msg, e);
         }
 
         @Override
@@ -590,7 +609,7 @@ public class LogzioAppender extends AbstractAppender {
 
         @Override
         public void warning(String msg, Throwable e) {
-            statusLogger.warn(msg,e);
+            statusLogger.warn(msg, e);
         }
 
         @Override
@@ -600,7 +619,7 @@ public class LogzioAppender extends AbstractAppender {
 
         @Override
         public void info(String msg, Throwable e) {
-            statusLogger.info(msg,e);
+            statusLogger.info(msg, e);
         }
     }
 }

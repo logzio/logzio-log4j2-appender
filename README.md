@@ -13,7 +13,15 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.15</version>
+        <version>1.0.16</version>
+    </dependency>
+```
+The appender also requires a logger implementation, for example:
+```xml
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+        <version>2.15.0</version>
     </dependency>
 ```
 
@@ -47,6 +55,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
 | **additionalFields**       | *None*                                    | Optional. Allows to add additional fields to the JSON message sent. The format is "fieldName1=fieldValue1;fieldName2=fieldValue2". You can optionally inject an environment variable value using the following format: "fieldName1=fieldValue1;fieldName2=$ENV_VAR_NAME". In that case, the environment variable should be the only value. In case the environment variable can't be resolved, the field will be omitted. |
 | **debug**       | *false*                                    | Print some debug messages to stdout to help to diagnose issues |
 | **compressRequests**       | *false*                                    | Boolean. `true` if logs are compressed in gzip format before sending. `false` if logs are sent uncompressed. |
+| **exceedMaxSizeAction**       | *"cut"*                                    | String. cut to truncate the message field or drop to drop log that exceed the allowed maximum size for logzio. If the log size exceeding the maximum size allowed after truncating the message field, the log will be dropped. |
 
 #### Parameters for in-memory queue
 | Parameter          | Default                              | Explained  |
@@ -137,6 +146,8 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 1.0.16
+   - Added exceedMaxSizeAction parameter for handling oversized logs.
  - 1.0.15
    - Bump versions of `log4j-core`
  - 1.0.14
