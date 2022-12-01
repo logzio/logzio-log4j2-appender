@@ -1,6 +1,7 @@
 package io.logz.log4j2;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -14,6 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import com.google.common.base.Throwables;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.Appender;
@@ -33,7 +35,6 @@ import com.google.common.base.Splitter;
 import io.logz.sender.HttpsRequestConfiguration;
 import io.logz.sender.LogzioSender;
 import io.logz.sender.SenderStatusReporter;
-import io.logz.sender.com.google.common.base.Throwables;
 import io.logz.sender.com.google.gson.JsonObject;
 import io.logz.sender.exceptions.LogzioParameterErrorException;
 
@@ -377,7 +378,7 @@ public class LogzioAppender extends AbstractAppender {
         }
         try {
             logzioSender = logzioSenderBuilder.build();
-        } catch (LogzioParameterErrorException e) {
+        } catch (LogzioParameterErrorException | IOException e) {
             statusLogger.error("Couldn't build logzio sender: " + e.getMessage(), e);
             return;
         }

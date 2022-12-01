@@ -13,7 +13,7 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>1.0.17</version>
+        <version>1.0.18</version>
     </dependency>
 ```
 The appender also requires a logger implementation, for example:
@@ -146,6 +146,8 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 1.0.18
+   - updated logzio sender version, fixing IndexOutOfBounds exception with bigqueue
  - 1.0.16
    - Added exceedMaxSizeAction parameter for handling oversized logs.
  - 1.0.15
