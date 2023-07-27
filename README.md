@@ -9,6 +9,7 @@ This appender sends logs to your [Logz.io](http://logz.io) account, using non-bl
 This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender) implementation. Once you send a log, it will be enqueued in the queue and 100% non-blocking. There is a background task that will handle the log shipment for you. This jar is an "Uber-Jar" that shades both LogzioSender, BigQueue, Gson and Guava to avoid "dependency hell".
 
 ### Installation from maven
+JDK 8:
 ```xml
     <dependency>
         <groupId>io.logz.log4j2</groupId>
@@ -16,6 +17,16 @@ This appender uses  [LogzioSender](https://github.com/logzio/logzio-java-sender)
         <version>1.0.19</version>
     </dependency>
 ```
+
+JDK 11 and above:
+```xml
+    <dependency>
+        <groupId>io.logz.log4j2</groupId>
+        <artifactId>logzio-log4j2-appender</artifactId>
+        <version>2.0.0</version>
+    </dependency>
+```
+
 The appender also requires a logger implementation, for example:
 ```xml
     <dependency>
@@ -146,11 +157,18 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ### Release notes
+ - 2.0.0 - THIS IS A SNAPSHOT RELEASE - SUPPORTED WITH JDK 11 AND ABOVE
+   - Updated LogzioSender version to `2.0.0`:
+     - Fixes an issue where DiskQueue was not clearing disk space when using JDK 11 and above.
  - 1.0.19
    - Updated LogzioSender version to `1.1.8`:
      - Fix an issue where log is not being truncated properly between size of 32.7k to 500k.
  - 1.0.18
    - updated logzio sender version, fixing IndexOutOfBounds exception with bigqueue
+
+ <details>
+  <summary markdown="span"> Expand to check old versions </summary>
+
  - 1.0.16
    - Added exceedMaxSizeAction parameter for handling oversized logs.
  - 1.0.15
@@ -182,7 +200,7 @@ Will send a log to Logz.io that looks like this:
    - Fixed an issue: [LogzioAppender does not let the JVM exit](https://github.com/logzio/logzio-log4j2-appender/issues/2)  
  - 1.0.0
    - Initial releases
-   
+       </details>
 
 ### Contribution
  - Fork
