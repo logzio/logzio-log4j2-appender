@@ -157,12 +157,12 @@ Will send a log to Logz.io that looks like this:
 ```
 
 ## Build and test locally
-1. clone the repository:
+1. Clone the repository:
   ```bash
   git clone https://github.com/logzio/logzio-log4j2-appender.git
   cd logzio-log4j2-appender
   ```
-2. build and run tests:
+2. Build and run tests:
   ```bash
   mvn clean compile
   mvn test
