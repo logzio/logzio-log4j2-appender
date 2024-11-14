@@ -169,6 +169,10 @@ Will send a log to Logz.io that looks like this:
   ```
 
 ### Release notes
+- 2.1.0
+    - Updated LogzioSender version to `2.1.0`
+        - Upgrade packages version
+    - Upgrade packages version 
 - 2.0.1
   - Updated LogzioSender version to `2.0.1`
     - Add `User-Agent` header with logz.io information

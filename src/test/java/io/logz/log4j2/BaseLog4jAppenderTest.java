@@ -41,7 +41,7 @@ public abstract class BaseLog4jAppenderTest {
     protected void sleepSeconds(int seconds) {
         logger.info("Sleeping {} [sec]...", seconds);
         try {
-            Thread.sleep(seconds * 1000);
+            Thread.sleep(seconds * 1000L);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
