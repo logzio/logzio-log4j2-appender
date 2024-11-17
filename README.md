@@ -23,7 +23,7 @@ JDK 11 and above:
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>2.0.1</version>
+        <version>2.1.0</version>
     </dependency>
 ```
 
@@ -32,7 +32,7 @@ The appender also requires a logger implementation, for example:
     <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-slf4j-impl</artifactId>
-        <version>2.15.0</version>
+        <version>2.24.1</version>
     </dependency>
 ```
 
