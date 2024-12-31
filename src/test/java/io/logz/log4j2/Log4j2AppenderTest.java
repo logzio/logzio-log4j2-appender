@@ -1,5 +1,11 @@
 package io.logz.log4j2;
 
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
@@ -44,7 +50,105 @@ public class Log4j2AppenderTest extends BaseLog4jAppenderTest {
     public Log4j2AppenderTest(QueueType queueType) {
         this.queueType = queueType;
     }
+    /**
+     * Create and configure an OpenTelemetry instance.
+     * For real usage, you might configure exporters, Resource, etc.
+     */
+    private OpenTelemetry initOpenTelemetry() {
+        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
+                .build();
 
+        OpenTelemetrySdk openTelemetry = OpenTelemetrySdk.builder()
+                .setTracerProvider(tracerProvider)
+                .build();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(tracerProvider::close));
+        return openTelemetry;
+    }
+
+    @Test
+    public void openTelemetryContext_Enabled() {
+        String token = "otelToken";
+        String type = "otelType" + random(8);
+        String loggerName = "otelLogger" + random(8);
+        int drainTimeout = 1;
+        String message = "Test log with OTel context for Log4j2 - " + random(5);
+
+        logzioAppenderBuilder.setAddOpentelemetryContext(true);
+
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+
+        OpenTelemetry openTelemetry = initOpenTelemetry();
+        Tracer tracer = openTelemetry.getTracer("test-tracer");
+        Span span = tracer.spanBuilder("testSpan").startSpan();
+        try (Scope scope = span.makeCurrent()) {
+            testLogger.info(message);
+
+            sleepSeconds(drainTimeout * 2);
+
+            mockListener.assertNumberOfReceivedMsgs(1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message);
+            mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
+
+            String traceId = logRequest.getStringFieldOrNull("trace_id");
+            String spanId = logRequest.getStringFieldOrNull("span_id");
+            String serviceName = logRequest.getStringFieldOrNull("service_name");
+
+            assertThat(traceId)
+                    .as("trace_id should be present when addOpentelemetryContext=true")
+                    .isNotNull();
+            assertThat(spanId)
+                    .as("span_id should be present when addOpentelemetryContext=true")
+                    .isNotNull();
+            assertThat(serviceName)
+                    .as("service_name might be null unless configured, but let's check anyway")
+                    .isNotNull();
+        } finally {
+            span.end();
+        }
+    }
+
+    @Test
+    public void openTelemetryContext_Disabled() {
+        String token = "otelToken2";
+        String type = "otelTypeDisabled" + random(8);
+        String loggerName = "otelLoggerDisabled" + random(8);
+        int drainTimeout = 1;
+        String message = "Test log with OTel context disabled - " + random(5);
+
+        logzioAppenderBuilder.setAddOpentelemetryContext(false);
+
+        Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
+
+        OpenTelemetry openTelemetry = initOpenTelemetry();
+        Tracer tracer = openTelemetry.getTracer("test-tracer");
+        Span span = tracer.spanBuilder("testSpan").startSpan();
+        try (Scope scope = span.makeCurrent()) {
+            testLogger.info(message);
+
+            sleepSeconds(drainTimeout * 2);
+
+            mockListener.assertNumberOfReceivedMsgs(1);
+            LogRequest logRequest = mockListener.assertLogReceivedByMessage(message);
+            mockListener.assertLogReceivedIs(logRequest, token, type, loggerName, Level.INFO.name());
+
+            String traceId = logRequest.getStringFieldOrNull("trace_id");
+            String spanId = logRequest.getStringFieldOrNull("span_id");
+            String serviceName = logRequest.getStringFieldOrNull("service_name");
+
+            assertThat(traceId)
+                    .as("trace_id should NOT be present when addOpentelemetryContext=false")
+                    .isNull();
+            assertThat(spanId)
+                    .as("span_id should NOT be present when addOpentelemetryContext=false")
+                    .isNull();
+            assertThat(serviceName)
+                    .as("service_name should NOT be present when addOpentelemetryContext=false")
+                    .isNull();
+        } finally {
+            span.end();
+        }
+    }
     @Test
     public void simpleAppending() {
         String token = "aBcDeFgHiJkLmNoPqRsT";
