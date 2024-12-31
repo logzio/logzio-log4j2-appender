@@ -128,12 +128,15 @@ public class LogzioAppender extends AbstractAppender {
         @PluginBuilderAttribute
         String exceedMaxSizeAction = "cut";
 
+        @PluginBuilderAttribute
+        boolean addOpentelemetryContext = true;
+
         @Override
         public LogzioAppender build() {
             return new LogzioAppender(name, filter, ignoreExceptions, logzioUrl, logzioToken, logzioType,
                     drainTimeoutSec, fileSystemFullPercentThreshold, queueDir == null ? bufferDir : queueDir, socketTimeoutMs, connectTimeoutMs,
                     addHostname, additionalFields, debug, gcPersistedQueueFilesIntervalSeconds, compressRequests,
-                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity, exceedMaxSizeAction);
+                    inMemoryQueue, inMemoryQueueCapacityBytes, inMemoryLogsCountCapacity, exceedMaxSizeAction, addOpentelemetryContext);
         }
 
         public Builder setFilter(Filter filter) {
@@ -246,6 +249,11 @@ public class LogzioAppender extends AbstractAppender {
             return this;
         }
 
+        public Builder setAddOpentelemetryContext(boolean addOpentelemetryContext) {
+            this.addOpentelemetryContext = addOpentelemetryContext;
+            return this;
+        }
+
     }
 
     private static final int DONT_LIMIT_CAPACITY = -1;
@@ -269,6 +277,7 @@ public class LogzioAppender extends AbstractAppender {
     private final long inMemoryLogsCountCapacity;
     private String exceedMaxSizeAction;
     private final Map<String, String> additionalFieldsMap = new HashMap<>();
+    private final boolean addOpentelemetryContext;
 
     // need to keep static instances of ScheduledExecutorService per LogzioAppender as
     // the LogzioSender.Builder keep static instances per the given token and type
@@ -281,7 +290,7 @@ public class LogzioAppender extends AbstractAppender {
                            String queueDir, int socketTimeout, int connectTimeout, boolean addHostname,
                            String additionalFields, boolean debug, int gcPersistedQueueFilesIntervalSeconds,
                            boolean compressRequests, boolean inMemoryQueue,
-                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountCapacity, String exceedMaxSizeAction) {
+                           long inMemoryQueueCapacityBytes, long inMemoryLogsCountCapacity, String exceedMaxSizeAction, boolean addOpentelemetryContext) {
         super(name, filter, null, ignoreExceptions);
         this.logzioToken = getValueFromSystemEnvironmentIfNeeded(token);
         this.logzioUrl = getValueFromSystemEnvironmentIfNeeded(url);
@@ -299,6 +308,8 @@ public class LogzioAppender extends AbstractAppender {
         this.inMemoryQueueCapacityBytes = inMemoryQueueCapacityBytes;
         this.inMemoryLogsCountCapacity = inMemoryLogsCountCapacity;
         this.exceedMaxSizeAction = exceedMaxSizeAction;
+        this.addOpentelemetryContext = addOpentelemetryContext;
+
 
         verifyExceedMaxSizeAction(exceedMaxSizeAction);
         if (additionalFields != null) {
@@ -341,6 +352,7 @@ public class LogzioAppender extends AbstractAppender {
                 .setReporter(new StatusReporter())
                 .setHttpsRequestConfiguration(conf)
                 .setExceedMaxSizeAction(exceedMaxSizeAction);
+//                .setWithOpentelemetryContext(addOpentelemetryContext);
 
         if (inMemoryQueue) {
             if (!validateQueueCapacity()) {
