@@ -194,7 +194,6 @@ If you're sending traces with OpenTelemetry instrumentation (auto or manual), yo
 - 2.2.0
     -  Updated LogzioSender version to `2.2.0`
         - Add `addOpentelemetryContext` option, to add `trace_id`, `span_id`, `service_name` fields to logs when opentelemetry context is available.
-        -
 - 2.1.0
     - Updated LogzioSender version to `2.1.0`
         - Upgrade packages version
