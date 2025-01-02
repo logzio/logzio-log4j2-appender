@@ -351,8 +351,8 @@ public class LogzioAppender extends AbstractAppender {
                 .setDrainTimeoutSec(drainTimeoutSec)
                 .setReporter(new StatusReporter())
                 .setHttpsRequestConfiguration(conf)
-                .setExceedMaxSizeAction(exceedMaxSizeAction);
-//                .setWithOpentelemetryContext(addOpentelemetryContext);
+                .setExceedMaxSizeAction(exceedMaxSizeAction)
+                .setWithOpentelemetryContext(addOpentelemetryContext);
 
         if (inMemoryQueue) {
             if (!validateQueueCapacity()) {
