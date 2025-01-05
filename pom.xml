@@ -36,7 +36,7 @@
     </scm>
 
     <properties>
-        <logzio-sender-version>2.1.0</logzio-sender-version>
+        <logzio-sender-version>2.2.0</logzio-sender-version>
     </properties>
 
     <build>
@@ -145,7 +145,7 @@
         <dependency>
             <groupId>io.logz.sender</groupId>
             <artifactId>logzio-sender</artifactId>
-            <version>2.2.0</version>
+            <version>${logzio-sender-version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
@@ -160,7 +160,7 @@
         <dependency>
             <groupId>io.logz.sender</groupId>
             <artifactId>logzio-sender-test</artifactId>
-            <version>2.2.0</version>
+            <version>${logzio-sender-version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
