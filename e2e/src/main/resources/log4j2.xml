@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+    <Appenders>
+        <LogzioAppender name="Logzio">
+            <logzioToken>${env:LOGZIO_TOKEN}</logzioToken>
+            <logzioType>${env:ENV_ID}</logzioType>
+            <logzioUrl>https://listener.logz.io:8071</logzioUrl>
+            <addHostname>true</addHostname>
+            <additionalFields>env_id=${env:ENV_ID}</additionalFields>
+            <drainTimeoutSec>5</drainTimeoutSec>
+            <inMemoryQueue>true</inMemoryQueue>
+        </LogzioAppender>
+    </Appenders>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Logzio"/>
+        </Root>
+    </Loggers>
+</Configuration>
+
