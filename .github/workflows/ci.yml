@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Java ${{ matrix.java }} on ${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        java: ['17', '21']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Run tests with coverage
+        run: mvn test jacoco:report --batch-mode --no-transfer-progress
+
+      - name: Upload coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.java == '17'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
+          retention-days: 7
+
+  e2e-integration:
+    name: E2E Integration Test
+    needs: [test]
+    runs-on: ubuntu-latest
+    env:
+      LOGZIO_TOKEN: ${{ secrets.LOGZIO_TOKEN }}
+      LOGZIO_API_KEY: ${{ secrets.LOGZIO_API_KEY }}
+      LOGZIO_API_URL: ${{ secrets.LOGZIO_API_URL }}
+      ENV_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: maven
+
+      - name: Build package
+        run: mvn package -DskipTests --batch-mode --no-transfer-progress
+
+      - name: Run E2E test
+        run: |
+          chmod +x e2e/run-e2e.sh
+          ./e2e/run-e2e.sh
+
+      - name: Wait for log ingestion
+        run: |
+          echo "Waiting 180 seconds for logs to be ingested..."
+          sleep 180
+
+      - name: Validate logs in Logz.io
+        run: |
+          chmod +x e2e/validate-logs.sh
+          ./e2e/validate-logs.sh
+
+  ci-success:
+    name: CI Success
+    needs: [test, e2e-integration]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Test job failed"
+            exit 1
+          fi
+          if [ "${{ needs.e2e-integration.result }}" != "success" ]; then
+            echo "E2E integration job failed"
+            exit 1
+          fi
+          echo "All CI jobs passed successfully!"
