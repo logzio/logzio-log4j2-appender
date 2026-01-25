@@ -38,13 +38,15 @@ RESPONSE=$(curl -s -X POST "${API_URL}/search" \
         \"sort\": [{\"@timestamp\": {\"order\": \"desc\"}}]
     }")
 
+echo "API Response:"
+echo "${RESPONSE}" | jq .
+
 if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
     echo "ERROR: API returned an error"
-    echo "$RESPONSE" | jq .
     exit 1
 fi
 
-HITS=$(echo "${RESPONSE}" | jq -r '.hits.total.value // .hits.total // 0')
+HITS=$(echo "${RESPONSE}" | jq -r 'if .hits.total | type == "object" then .hits.total.value else .hits.total end // 0')
 
 if [ "${HITS}" -eq 0 ]; then
     echo "ERROR: No logs found with env_id: ${ENV_ID}"
