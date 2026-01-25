@@ -13,7 +13,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <log4j2.version>2.24.3</log4j2.version>
+        <log4j2.version>2.25.3</log4j2.version>
         <!-- Version is passed via -Dlogzio-appender.version from run-e2e.sh -->
         <logzio-appender.version>test</logzio-appender.version>
     </properties>
