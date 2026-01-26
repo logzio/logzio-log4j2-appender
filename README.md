@@ -23,7 +23,7 @@ JDK 11 and above:
     <dependency>
         <groupId>io.logz.log4j2</groupId>
         <artifactId>logzio-log4j2-appender</artifactId>
-        <version>2.3.0</version>
+        <version>2.4.0</version>
     </dependency>
 ```
 
@@ -191,6 +191,9 @@ If you're sending traces with OpenTelemetry instrumentation (auto or manual), yo
   ```
 
 ### Release notes
+- 2.4.0
+  - Updated LogzioSender version to `2.4.0`.
+  - Upgrade dependencies.
 - 2.3.0
   - Updated LogzioSender version to `2.3.0`.
     - Upgrade dependencies.
