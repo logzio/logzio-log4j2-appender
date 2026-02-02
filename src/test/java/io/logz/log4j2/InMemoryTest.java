@@ -29,10 +29,11 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
+        sleepSeconds(drainTimeout + 1);
         testLogger.warn(message2);
 
-        sleepSeconds(drainTimeout * 2);
-        mockListener.assertNumberOfReceivedMsgs(1);
+        sleepSeconds(drainTimeout + 1);
+        mockListener.assertNumberOfReceivedMsgs(2);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
 
@@ -49,10 +50,11 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
+        sleepSeconds(drainTimeout + 1);
         testLogger.warn(message2);
 
-        sleepSeconds(drainTimeout * 2);
-        mockListener.assertNumberOfReceivedMsgs(1);
+        sleepSeconds(drainTimeout + 1);
+        mockListener.assertNumberOfReceivedMsgs(2);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
 }
