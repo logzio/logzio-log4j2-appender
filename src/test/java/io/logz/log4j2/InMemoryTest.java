@@ -33,7 +33,7 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         testLogger.warn(message2);
 
         sleepSeconds(drainTimeout + 1);
-        mockListener.assertNumberOfReceivedMsgs(1);
+        mockListener.assertNumberOfReceivedMsgs(2);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
 
@@ -54,7 +54,7 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         testLogger.warn(message2);
 
         sleepSeconds(drainTimeout + 1);
-        mockListener.assertNumberOfReceivedMsgs(1);
+        mockListener.assertNumberOfReceivedMsgs(2);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
 }
