@@ -64,22 +64,4 @@ public abstract class BaseLog4jAppenderTest {
     protected String random(int numberOfChars) {
         return UUID.randomUUID().toString().substring(0, numberOfChars-1);
     }
-    protected MockLogzioBulkListener.LogRequest waitForMessage(String message, int maxWaitSeconds) {
-        long startTime = System.currentTimeMillis();
-        long maxWaitMillis = maxWaitSeconds * 1000L;
-        
-        while (System.currentTimeMillis() - startTime < maxWaitMillis) {
-            try {
-                return mockListener.assertLogReceivedByMessage(message);
-            } catch (AssertionError e) {
-                try {
-                    Thread.sleep(100); /
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(ie);
-                }
-            }
-        }
-        return null; 
-    }
 }
