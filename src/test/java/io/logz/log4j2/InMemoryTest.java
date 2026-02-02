@@ -29,6 +29,7 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
+        sleepSeconds(drainTimeout + 1);
         testLogger.warn(message2);
 
         sleepSeconds(drainTimeout * 2);
@@ -49,6 +50,7 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
+        sleepSeconds(drainTimeout + 1);
         testLogger.warn(message2);
 
         sleepSeconds(drainTimeout * 2);
