@@ -29,10 +29,15 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
-        sleepSeconds(drainTimeout + 1);
+        try {
+            Thread.sleep(100); // 100ms should be enough for message1 to be queued
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
         testLogger.warn(message2);
 
-        sleepSeconds(drainTimeout * 2);
+        sleepSeconds(drainTimeout * 3);
         mockListener.assertNumberOfReceivedMsgs(1);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
@@ -50,10 +55,15 @@ public class InMemoryTest extends BaseLog4jAppenderTest {
         Logger testLogger = getLogger(logzioAppenderBuilder, loggerName, token, type, drainTimeout);
 
         testLogger.info(message1);
-        sleepSeconds(drainTimeout + 1);
+        try {
+            Thread.sleep(100); // 100ms should be enough for message1 to be queued
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
         testLogger.warn(message2);
 
-        sleepSeconds(drainTimeout * 2);
+        sleepSeconds(drainTimeout * 3);
         mockListener.assertNumberOfReceivedMsgs(1);
         mockListener.assertLogReceivedIs(message1, token, type, loggerName, Level.INFO.name());
     }
